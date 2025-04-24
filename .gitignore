@@ -1,0 +1,39 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.env
+.env.*.local
+
+# Sequelize CLI
+config/config.js
+*.sqlite
+*.sqlite3
+
+# Logs
+logs
+*.log
+log/
+debug.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# Migrations/Seeders Timestamps (optional, but useful for ignoring generated files if needed)
+migrations/*.js
+seeders/*.js
+
+# Optional build outputs if you use something like Babel or TypeScript
+dist/
+build/
+
+# Misc
+coverage/
