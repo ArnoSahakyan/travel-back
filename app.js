@@ -1,23 +1,23 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import authRoutes from './routes/auth.routes.js';
+import routes from './routes/index.js';
 
 dotenv.config();
 
 const app = express();
 
-// Middleware
+// Middlewares
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
-app.use('/api/auth', authRoutes);
+// API Routes
+app.use('/api', routes);
 
-// Health Check
+// Health Check Route
 app.get('/', (req, res) => {
-    res.json({ message: 'Welcome to Wanderluxe API ✈️' });
+    res.status(200).json({ message: 'Welcome to Wanderluxe API ✈️' });
 });
 
 export default app;

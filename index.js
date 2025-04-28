@@ -7,21 +7,21 @@ import seedRoles from './seeders/seedRoles.js';
 
 const { sequelize, Role } = models;
 
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
 const startServer = async () => {
     try {
         await sequelize.authenticate();
         console.log('✅ Database connected successfully');
 
-        await sequelize.sync({ alter: true }); // or { force: true } for dev
+        await sequelize.sync({ alter: true });
         console.log('🔄 Database sync complete');
 
         await seedRoles(Role);
         console.log('🌱 Roles seeded');
 
-        app.listen(port, () => {
-            console.log(`🚀 Server running on port ${port}`);
+        app.listen(PORT, () => {
+            console.log(`🚀 Server running at http://localhost:${PORT}`);
         });
     } catch (error) {
         console.error('❌ Unable to start server:', error);

@@ -1,70 +1,106 @@
-import db from '../models/index.js'; // assuming Sequelize models
+import db from '../models/index.js';
 
-const { Tour, Destination, TourCategory, TourImage } = db;
-// Get all tours
+const { Tour } = db;
+
+// Create Tour (Admin only)
+export const createTour = async (req, res) => {
+    const { name, description, price, start_date, end_date, category_id, destination_id } = req.body;
+
+    try {
+        const tour = await Tour.create({
+            name,
+            description,
+            price,
+            start_date,
+            end_date,
+            category_id,
+            destination_id
+        });
+        res.status(201).json(tour);
+    } catch (error) {
+        console.error('Create Tour Error:', error);
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+};
+
+// Get all Tours (Public)
 export const getAllTours = async (req, res) => {
     try {
         const tours = await Tour.findAll({
-            include: [{ model: Destination }, { model: TourCategory }, { model: TourImage }]
+            include: [{ model: db.Destination, as: 'Destination' }] // If you want to include destination details
         });
         res.json(tours);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch tours' });
+    } catch (error) {
+        console.error('Get All Tours Error:', error);
+        res.status(500).json({ message: 'Internal server error.' });
     }
 };
 
-// Get a single tour by ID
+// Get a single Tour by ID (Public)
 export const getTourById = async (req, res) => {
+    const { id } = req.params;
+
     try {
-        const tour = await Tour.findByPk(req.params.id, {
-            include: [{ model: Destination }, { model: TourCategory }, { model: TourImage }]
+        const tour = await Tour.findByPk(id, {
+            include: [{ model: db.Destination, as: 'Destination' }] // Include destination if needed
         });
+
         if (!tour) {
-            return res.status(404).json({ error: 'Tour not found' });
+            return res.status(404).json({ message: 'Tour not found.' });
         }
+
         res.json(tour);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch tour' });
+    } catch (error) {
+        console.error('Get Tour Error:', error);
+        res.status(500).json({ message: 'Internal server error.' });
     }
 };
 
-// Create a new tour
-export const createTour = async (req, res) => {
-    try {
-        const { name, description, price, start_date, end_date, destination_id, category_id, capacity } = req.body;
-        const newTour = await Tour.create({
-            name, description, price, start_date, end_date, destination_id, category_id, capacity
-        });
-        res.status(201).json(newTour);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to create tour' });
-    }
-};
-
-// Update a tour
+// Update Tour by ID (Admin only)
 export const updateTour = async (req, res) => {
+    const { id } = req.params;
+    const { name, description, price, start_date, end_date, category_id, destination_id } = req.body;
+
     try {
-        const tour = await Tour.findByPk(req.params.id);
+        const tour = await Tour.findByPk(id);
+
         if (!tour) {
-            return res.status(404).json({ error: 'Tour not found' });
+            return res.status(404).json({ message: 'Tour not found.' });
         }
-        await tour.update(req.body);
+
+        await tour.update({
+            name,
+            description,
+            price,
+            start_date,
+            end_date,
+            category_id,
+            destination_id
+        });
+
         res.json(tour);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to update tour' });
+    } catch (error) {
+        console.error('Update Tour Error:', error);
+        res.status(500).json({ message: 'Internal server error.' });
     }
 };
 
-// Delete a tour
+// Delete Tour by ID (Admin only)
 export const deleteTour = async (req, res) => {
+    const { id } = req.params;
+
     try {
-        const tour = await Tour.findByPk(req.params.id);
+        const tour = await Tour.findByPk(id);
+
         if (!tour) {
-            return res.status(404).json({ error: 'Tour not found' });
+            return res.status(404).json({ message: 'Tour not found.' });
         }
+
         await tour.destroy();
-        res.status(204).json();
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to delete tour' });
+
+        res.json({ message: 'Tour deleted successfully.' });
+    } catch (error) {
+        console.error('Delete Tour Error:', error);
+        res.status(500).json({ message: 'Internal server error.' });
     }
 };

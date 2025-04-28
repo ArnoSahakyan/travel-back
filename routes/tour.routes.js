@@ -1,22 +1,30 @@
-// tourRoutes.js
 import express from 'express';
-import { getAllTours, getTourById, createTour, updateTour, deleteTour } from '../controllers/tour.controller.js';
+import { verifyToken, isAdmin } from '../middlewares/auth.middleware.js';
+import {
+    createTour,
+    getAllTours,
+    getTourById,
+    updateTour,
+    deleteTour
+} from '../controllers/tour.controller.js';
+import {
+    addImageToTour,
+    getImagesForTour,
+    deleteImageForTour
+} from '../controllers/tourImage.controller.js';
 
 const router = express.Router();
 
-// Get all tours
-router.get('/', getAllTours);
+// Tour Routes
+router.get('/tours', getAllTours);
+router.get('/tours/:id', getTourById);
+router.post('/tours', verifyToken, isAdmin, createTour);
+router.put('/tours/:id', verifyToken, isAdmin, updateTour);
+router.delete('/tours/:id', verifyToken, isAdmin, deleteTour);
 
-// Get a specific tour by ID
-router.get('/:id', getTourById);
-
-// Create a new tour
-router.post('/', createTour);
-
-// Update an existing tour
-router.put('/:id', updateTour);
-
-// Delete a tour
-router.delete('/:id', deleteTour);
+// Tour Image Routes
+router.post('/tours/:tourId/images', verifyToken, isAdmin, addImageToTour);
+router.get('/tours/:tourId/images', getImagesForTour);
+router.delete('/tours/:tourId/images/:imageId', verifyToken, isAdmin, deleteImageForTour);
 
 export default router;

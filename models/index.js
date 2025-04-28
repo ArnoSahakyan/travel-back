@@ -1,17 +1,17 @@
 import { Sequelize } from 'sequelize';
 import dotenv from 'dotenv';
 
-import UserModel from './User.js';
-import RoleModel from './Role.js';
-import DestinationModel from './Destination.js';
-import TourCategoryModel from './TourCategory.js';
-import TourModel from './Tour.js';
-import TourImageModel from './TourImage.js';
-import BookingModel from './Booking.js';
-import WishlistModel from './Wishlist.js';
-import ReviewModel from './Review.js';
-import BlogPostModel from './BlogPost.js';
-import NewsletterSubscriberModel from './NewsletterSubscriber.js';
+import UserModel from './user.model.js';
+import RoleModel from './role.model.js';
+import DestinationModel from './destination.model.js';
+import TourCategoryModel from './tourCategory.model.js';
+import TourModel from './tour.model.js';
+import TourImageModel from './tourImage.model.js';
+import BookingModel from './booking.model.js';
+import WishlistModel from './wishlist.model.js';
+import ReviewModel from './review.model.js';
+import BlogPostModel from './blogPost.model.js';
+import NewsletterSubscriberModel from './newsletterSubscriber.model.js';
 
 dotenv.config();
 
