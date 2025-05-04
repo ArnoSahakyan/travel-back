@@ -1,25 +1,37 @@
 import db from '../models/index.js';
+import { uploadAndProcessImages, deleteFromSupabase } from '../utils/imageUpload.js';
 
-const { TourImage } = db;
+const { Tour, TourImage } = db;
 
 // Add an image to a tour (Admin only)
-export const addImageToTour = async (req, res) => {
+export const addImagesToTour = async (req, res) => {
     const { tourId } = req.params;
-    const { image_url } = req.body;
+    const files = req.files;
 
     try {
-        const tour = await db.Tour.findByPk(tourId);
+        const tour = await Tour.findByPk(tourId);
 
         if (!tour) {
             return res.status(404).json({ message: 'Tour not found.' });
         }
 
-        const image = await TourImage.create({
-            tour_id: tourId,
-            image_url
-        });
+        const existingImageCount = await TourImage.count({ where: { tour_id: tourId } });
 
-        res.status(201).json(image);
+        if (existingImageCount + files.length > 10) {
+            return res.status(400).json({ message: 'A tour can have a maximum of 10 images.' });
+        }
+
+        const imagePaths = await uploadAndProcessImages(files, 'tour-images', tourId);
+
+        const newImages = await TourImage.bulkCreate(
+            imagePaths.map(path => ({
+                tour_id: tourId,
+                image_url: path,
+                is_cover: false
+            }))
+        );
+
+        res.status(201).json(newImages);
     } catch (error) {
         console.error('Add Image Error:', error);
         res.status(500).json({ message: 'Internal server error.' });
@@ -42,6 +54,24 @@ export const getImagesForTour = async (req, res) => {
     }
 };
 
+// Set cover image for a tour (Admin only)
+export const setCoverImage = async (req, res) => {
+    const { tourId, imageId } = req.body;
+
+    try {
+        // Unset current cover image
+        await TourImage.update({ is_cover: false }, { where: { tour_id: tourId } });
+
+        // Set new cover image
+        await TourImage.update({ is_cover: true }, { where: { image_id: imageId } });
+
+        res.json({ message: 'Cover image updated.' });
+    } catch (err) {
+        console.error('Set Cover Image Error:', err);
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+};
+
 // Delete an image for a tour (Admin only)
 export const deleteImageForTour = async (req, res) => {
     const { tourId, imageId } = req.params;
@@ -55,7 +85,25 @@ export const deleteImageForTour = async (req, res) => {
             return res.status(404).json({ message: 'Image not found.' });
         }
 
+        const wasCover = image.is_cover;
+
+        // Delete image from Supabase storage
+        await deleteFromSupabase(image.image_url, 'tour-images');
+
+        // Delete image record from the DB
         await image.destroy();
+
+        // If the deleted image was the cover, set another image as cover
+        if (wasCover) {
+            const otherImage = await TourImage.findOne({
+                where: { tour_id: tourId },
+                order: [['image_id', 'ASC']] // pick the next image as cover
+            });
+
+            if (otherImage) {
+                await otherImage.update({ is_cover: true });
+            }
+        }
 
         res.json({ message: 'Image deleted successfully.' });
     } catch (error) {

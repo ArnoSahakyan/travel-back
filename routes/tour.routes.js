@@ -8,23 +8,26 @@ import {
     deleteTour
 } from '../controllers/tour.controller.js';
 import {
-    addImageToTour,
+    addImagesToTour,
     getImagesForTour,
-    deleteImageForTour
+    deleteImageForTour,
+    setCoverImage
 } from '../controllers/tourImage.controller.js';
+import { upload } from '../middlewares/upload.middleware.js';
 
 const router = express.Router();
 
 // Tour Routes
-router.get('/tours', getAllTours);
-router.get('/tours/:id', getTourById);
-router.post('/tours', verifyToken, isAdmin, createTour);
-router.put('/tours/:id', verifyToken, isAdmin, updateTour);
-router.delete('/tours/:id', verifyToken, isAdmin, deleteTour);
+router.get('/', getAllTours);
+router.get('/:id', getTourById);
+router.post('/', verifyToken, isAdmin, upload, createTour);
+router.put('/:id', verifyToken, isAdmin, updateTour);
+router.delete('/:id', verifyToken, isAdmin, deleteTour);
 
 // Tour Image Routes
-router.post('/tours/:tourId/images', verifyToken, isAdmin, addImageToTour);
-router.get('/tours/:tourId/images', getImagesForTour);
-router.delete('/tours/:tourId/images/:imageId', verifyToken, isAdmin, deleteImageForTour);
+router.post('/:tourId/images', verifyToken, isAdmin, upload, addImagesToTour);
+router.get('/:tourId/images', getImagesForTour);
+router.patch('/cover', verifyToken, isAdmin, setCoverImage);
+router.delete('/:tourId/images/:imageId', verifyToken, isAdmin, deleteImageForTour);
 
 export default router;

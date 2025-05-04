@@ -1,11 +1,12 @@
 import db from '../models/index.js';
+import {deleteFromSupabase, uploadAndProcessImages} from '../utils/imageUpload.js';
 
-const { Tour } = db;
+const { Tour, TourImage } = db;
 
 // Create Tour (Admin only)
 export const createTour = async (req, res) => {
     const { name, description, price, start_date, end_date, category_id, destination_id } = req.body;
-
+    const files = req.files;
     try {
         const tour = await Tour.create({
             name,
@@ -16,6 +17,20 @@ export const createTour = async (req, res) => {
             category_id,
             destination_id
         });
+
+        // Upload and process images if any
+        if (files && files.length > 0) {
+            const imagePaths = await uploadAndProcessImages(files, 'tour-images', tour.tour_id);
+
+            const imageRecords = imagePaths.map((path, index) => ({
+                tour_id: tour.tour_id,
+                image_url: path,
+                is_cover: index === 0
+            }));
+
+            await TourImage.bulkCreate(imageRecords);
+        }
+
         res.status(201).json(tour);
     } catch (error) {
         console.error('Create Tour Error:', error);
@@ -27,7 +42,16 @@ export const createTour = async (req, res) => {
 export const getAllTours = async (req, res) => {
     try {
         const tours = await Tour.findAll({
-            include: [{ model: db.Destination, as: 'Destination' }] // If you want to include destination details
+            include: [
+                {
+                    model: db.TourImage,
+                    as: 'TourImages',
+                    where: { is_cover: true },
+                    required: false,
+                    attributes: ['image_url']
+                },
+                { model: db.Destination, as: 'Destination' }
+            ]
         });
         res.json(tours);
     } catch (error) {
@@ -42,7 +66,10 @@ export const getTourById = async (req, res) => {
 
     try {
         const tour = await Tour.findByPk(id, {
-            include: [{ model: db.Destination, as: 'Destination' }] // Include destination if needed
+            include: [
+                { model: db.TourImage, as: 'TourImages' },
+                { model: db.Destination, as: 'Destination' }
+            ]
         });
 
         if (!tour) {
@@ -90,12 +117,27 @@ export const deleteTour = async (req, res) => {
     const { id } = req.params;
 
     try {
-        const tour = await Tour.findByPk(id);
+        const tour = await Tour.findByPk(id, {
+            include: [
+                { model: TourImage, as: 'TourImages' }
+            ]
+        });
 
         if (!tour) {
             return res.status(404).json({ message: 'Tour not found.' });
         }
 
+        // Delete all associated images from Supabase
+        for (const image of tour.TourImages) {
+            if (image.image_url) {
+                await deleteFromSupabase(image.image_url, 'tour-images');
+            }
+        }
+
+        // Delete TourImages records from DB
+        await TourImage.destroy({ where: { tour_id: id } });
+
+        // Delete the tour itself
         await tour.destroy();
 
         res.json({ message: 'Tour deleted successfully.' });

@@ -7,16 +7,14 @@ import {
     updateDestination,
     deleteDestination,
 } from '../controllers/destinations.controller.js';
+import {upload} from "../middlewares/upload.middleware.js";
 
 const router = express.Router();
 
-// Public routes
 router.get('/', getAllDestinations);
 router.get('/:id', getDestinationById);
-
-// Admin-only routes
-router.post('/', verifyToken, isAdmin, createDestination);
-router.put('/:id', verifyToken, isAdmin, updateDestination);
+router.post('/', verifyToken, isAdmin, upload, createDestination);
+router.put('/:id', verifyToken, isAdmin, upload, updateDestination);
 router.delete('/:id', verifyToken, isAdmin, deleteDestination);
 
 export default router;
