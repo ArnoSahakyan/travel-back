@@ -1,11 +1,12 @@
 import db from '../models/index.js';
-import { deleteFromSupabase, uploadAndProcessImages } from '../utils/imageUpload.js'; // your helper function
+import {deleteFromSupabase, uploadAndProcessImages} from '../utils/imageUpload.js';
+import {Sequelize} from "sequelize"; // your helper function
 
-const { Destination } = db;
+const {Destination} = db;
 
 // Create Destination (Admin only)
 export const createDestination = async (req, res) => {
-    const { name, description } = req.body;
+    const {name, description} = req.body;
     const file = req.files;
 
     try {
@@ -25,21 +26,21 @@ export const createDestination = async (req, res) => {
         res.status(201).json(destination);
     } catch (error) {
         console.error('Create Destination Error:', error);
-        res.status(500).json({ message: 'Internal server error.' });
+        res.status(500).json({message: 'Internal server error.'});
     }
 };
 
 // Update Destination (Admin only)
 export const updateDestination = async (req, res) => {
-    const { id } = req.params;
-    const { name, description } = req.body;
+    const {id} = req.params;
+    const {name, description} = req.body;
     const file = req.files;
 
     try {
         const destination = await Destination.findByPk(id);
 
         if (!destination) {
-            return res.status(404).json({ message: 'Destination not found.' });
+            return res.status(404).json({message: 'Destination not found.'});
         }
 
         let imagePath = destination.image;
@@ -63,45 +64,81 @@ export const updateDestination = async (req, res) => {
         res.json(destination);
     } catch (error) {
         console.error('Update Destination Error:', error);
-        res.status(500).json({ message: 'Internal server error.' });
+        res.status(500).json({message: 'Internal server error.'});
     }
 };
 
 export const getAllDestinations = async (req, res) => {
     try {
-        const destinations = await Destination.findAll();
-        res.json(destinations);
+        const page = parseInt(req.query.page) || 1; // Default to page 1
+        const limit = parseInt(req.query.limit) || 10; // Default to 10 items per page
+        const offset = (page - 1) * limit;
+
+        const {count, rows: destinations} = await Destination.findAndCountAll({
+            limit,
+            offset,
+            attributes: {
+                include: [
+                    // Count number of tours
+                    [
+                        Sequelize.literal(`(
+                          SELECT COUNT(*)
+                          FROM "Tours" AS "Tour"
+                          WHERE "Tour"."destination_id" = "Destination"."destination_id"
+                        )`),
+                        'tourCount',
+                    ],
+                    // Minimum tour price (starting price)
+                    [
+                        Sequelize.literal(`(
+                          SELECT MIN("Tour"."price")
+                          FROM "Tours" AS "Tour"
+                          WHERE "Tour"."destination_id" = "Destination"."destination_id"
+                        )`),
+                        'startingPrice',
+                    ],
+                ],
+            },
+            order: [['destination_id', 'ASC']],
+        });
+
+        res.json({
+            total: count,
+            currentPage: page,
+            totalPages: Math.ceil(count / limit),
+            destinations,
+        });
     } catch (error) {
         console.error('Get All Destinations Error:', error);
-        res.status(500).json({ message: 'Internal server error.' });
+        res.status(500).json({message: 'Internal server error.'});
     }
 };
 
 export const getDestinationById = async (req, res) => {
-    const { id } = req.params;
+    const {id} = req.params;
 
     try {
         const destination = await Destination.findByPk(id);
 
         if (!destination) {
-            return res.status(404).json({ message: 'Destination not found.' });
+            return res.status(404).json({message: 'Destination not found.'});
         }
 
         res.json(destination);
     } catch (error) {
         console.error('Get Destination Error:', error);
-        res.status(500).json({ message: 'Internal server error.' });
+        res.status(500).json({message: 'Internal server error.'});
     }
 };
 
 export const deleteDestination = async (req, res) => {
-    const { id } = req.params;
+    const {id} = req.params;
 
     try {
         const destination = await Destination.findByPk(id);
 
         if (!destination) {
-            return res.status(404).json({ message: 'Destination not found.' });
+            return res.status(404).json({message: 'Destination not found.'});
         }
 
         // Delete image from Supabase if exists
@@ -111,9 +148,9 @@ export const deleteDestination = async (req, res) => {
 
         await destination.destroy();
 
-        res.json({ message: 'Destination deleted successfully.' });
+        res.json({message: 'Destination deleted successfully.'});
     } catch (error) {
         console.error('Delete Destination Error:', error);
-        res.status(500).json({ message: 'Internal server error.' });
+        res.status(500).json({message: 'Internal server error.'});
     }
 };

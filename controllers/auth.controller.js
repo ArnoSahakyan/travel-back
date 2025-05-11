@@ -11,7 +11,7 @@ const generateToken = (user) => {
             role: user.Role?.role_name || 'customer',
         },
         process.env.ACCESS_TOKEN_SECRET,
-        { expiresIn: '1d' }
+        { expiresIn: '1h' }
     );
 };
 
@@ -21,7 +21,7 @@ const generateRefreshToken = (user) => {
             user_id: user.user_id,
         },
         process.env.REFRESH_TOKEN_SECRET,
-        { expiresIn: '7d' }
+        { expiresIn: '1d' }
     );
 };
 
@@ -119,11 +119,9 @@ export const refreshToken = async (req, res) => {
         }
 
         const newAccessToken = generateToken(user);
-        const newRefreshToken = generateRefreshToken(user);
 
         res.json({
             token: newAccessToken,
-            refreshToken: newRefreshToken,
         });
     } catch (err) {
         console.error('Refresh Token Error:', err);
