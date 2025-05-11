@@ -10,8 +10,8 @@ export const uploadAndProcessImages = async (files, bucket, identifier) => {
         const fullPath = `${folder}/${filename}`; // e.g. tour-id/unique.webp
 
         const buffer = await sharp(file.buffer)
-            .resize({ width: 1200 }) // optional: resize to max width
-            .webp({ quality: 80 })
+            .resize({ width: 1500 })
+            .webp({ quality: 90 })
             .toBuffer();
 
         const { error } = await supabase.storage

@@ -5,13 +5,14 @@ const { Tour, TourImage } = db;
 
 // Create Tour (Admin only)
 export const createTour = async (req, res) => {
-    const { name, description, price, start_date, end_date, category_id, destination_id } = req.body;
+    const { name, description, price, available_spots, start_date, end_date, category_id, destination_id } = req.body;
     const files = req.files;
     try {
         const tour = await Tour.create({
             name,
             description,
             price,
+            available_spots,
             start_date,
             end_date,
             category_id,
@@ -38,24 +39,50 @@ export const createTour = async (req, res) => {
     }
 };
 
-// Get all Tours (Public)
-export const getAllTours = async (req, res) => {
+// Get Tours with Optional Filters (category_id, destination_id, pagination)
+export const getFilteredTours = async (req, res) => {
+    const { category_id, destination_id } = req.query;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    const where = {};
+    if (category_id) where.category_id = category_id;
+    if (destination_id) where.destination_id = destination_id;
+
     try {
-        const tours = await Tour.findAll({
+        const { count, rows } = await Tour.findAndCountAll({
+            where,
+            limit,
+            offset,
             include: [
                 {
                     model: db.TourImage,
                     as: 'TourImages',
                     where: { is_cover: true },
                     required: false,
-                    attributes: ['image_url']
+                    attributes: ['image_url'],
                 },
-                { model: db.Destination, as: 'Destination' }
-            ]
+            ],
         });
-        res.json(tours);
+
+        const tours = rows.map((tour) => {
+            const tourJson = tour.toJSON();
+            return {
+                ...tourJson,
+                image: tourJson.TourImages?.[0]?.image_url || null,
+                TourImages: undefined,
+            };
+        });
+
+        res.json({
+            total: count,
+            currentPage: page,
+            totalPages: Math.ceil(count / limit),
+            tours,
+        });
     } catch (error) {
-        console.error('Get All Tours Error:', error);
+        console.error('Get Filtered Tours Error:', error);
         res.status(500).json({ message: 'Internal server error.' });
     }
 };
@@ -68,7 +95,8 @@ export const getTourById = async (req, res) => {
         const tour = await Tour.findByPk(id, {
             include: [
                 { model: db.TourImage, as: 'TourImages' },
-                { model: db.Destination, as: 'Destination' }
+                { model: db.Destination, as: 'Destination' },
+                { model: db.TourCategory, as: 'TourCategory' }
             ]
         });
 
@@ -86,7 +114,7 @@ export const getTourById = async (req, res) => {
 // Update Tour by ID (Admin only)
 export const updateTour = async (req, res) => {
     const { id } = req.params;
-    const { name, description, price, start_date, end_date, category_id, destination_id } = req.body;
+    const { name, description, price, available_spots, start_date, end_date, category_id, destination_id } = req.body;
 
     try {
         const tour = await Tour.findByPk(id);
@@ -99,6 +127,7 @@ export const updateTour = async (req, res) => {
             name,
             description,
             price,
+            available_spots,
             start_date,
             end_date,
             category_id,
@@ -127,7 +156,6 @@ export const deleteTour = async (req, res) => {
             return res.status(404).json({ message: 'Tour not found.' });
         }
 
-        // Delete all associated images from Supabase
         for (const image of tour.TourImages) {
             if (image.image_url) {
                 await deleteFromSupabase(image.image_url, 'tour-images');

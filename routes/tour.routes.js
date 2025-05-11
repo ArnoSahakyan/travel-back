@@ -2,7 +2,7 @@ import express from 'express';
 import { verifyToken, isAdmin } from '../middlewares/auth.middleware.js';
 import {
     createTour,
-    getAllTours,
+    getFilteredTours,
     getTourById,
     updateTour,
     deleteTour
@@ -18,7 +18,7 @@ import { upload } from '../middlewares/upload.middleware.js';
 const router = express.Router();
 
 // Tour Routes
-router.get('/', getAllTours);
+router.get('/', getFilteredTours);
 router.get('/:id', getTourById);
 router.post('/', verifyToken, isAdmin, upload, createTour);
 router.put('/:id', verifyToken, isAdmin, updateTour);
