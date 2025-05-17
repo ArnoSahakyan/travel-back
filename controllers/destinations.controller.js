@@ -1,6 +1,7 @@
 import db from '../models/index.js';
-import {deleteFromSupabase, uploadAndProcessImages} from '../utils/imageUpload.js';
-import {Sequelize} from "sequelize"; // your helper function
+import {addSupabaseUrl, deleteFromSupabase, uploadAndProcessImages} from '../utils/index.js';
+import {Sequelize} from "sequelize";
+import {DESTINATIONS_BUCKET} from "../constants/index.js"; // your helper function
 
 const {Destination} = db;
 
@@ -74,7 +75,7 @@ export const getAllDestinations = async (req, res) => {
         const limit = parseInt(req.query.limit) || 10; // Default to 10 items per page
         const offset = (page - 1) * limit;
 
-        const {count, rows: destinations} = await Destination.findAndCountAll({
+        const {count, rows} = await Destination.findAndCountAll({
             limit,
             offset,
             attributes: {
@@ -102,6 +103,14 @@ export const getAllDestinations = async (req, res) => {
             order: [['destination_id', 'ASC']],
         });
 
+        const destinations = rows.map(destination => {
+            const raw = destination.get({ plain: true });
+            return {
+                ...raw,
+                image: addSupabaseUrl(raw.image, DESTINATIONS_BUCKET),
+            };
+        });
+
         res.json({
             total: count,
             currentPage: page,
@@ -115,19 +124,24 @@ export const getAllDestinations = async (req, res) => {
 };
 
 export const getDestinationById = async (req, res) => {
-    const {id} = req.params;
+    const { id } = req.params;
 
     try {
         const destination = await Destination.findByPk(id);
 
         if (!destination) {
-            return res.status(404).json({message: 'Destination not found.'});
+            return res.status(404).json({ message: 'Destination not found.' });
         }
 
-        res.json(destination);
+        const plainDestination = destination.get({ plain: true });
+
+        res.json({
+            ...plainDestination,
+            image: addSupabaseUrl(plainDestination.image, DESTINATIONS_BUCKET),
+        });
     } catch (error) {
         console.error('Get Destination Error:', error);
-        res.status(500).json({message: 'Internal server error.'});
+        res.status(500).json({ message: 'Internal server error.' });
     }
 };
 

@@ -1,4 +1,6 @@
 import db from '../models/index.js';
+import {TOURS_BUCKET} from "../constants/index.js";
+import {addSupabaseUrl} from "../utils/index.js";
 
 const { Wishlist, Tour } = db;
 
@@ -58,7 +60,15 @@ export const getUserWishlists = async (req, res) => {
             include: [
                 {
                     model: Tour,
-                    include: ['Destination', 'TourCategory']
+                    include: [
+                        {
+                            model: db.TourImage,
+                            as: 'TourImages',
+                            where: { is_cover: true },
+                            required: false,
+                            attributes: ['image_url'],
+                        },
+                    ],
                 }
             ],
             order: [['createdAt', 'DESC']],
@@ -66,11 +76,35 @@ export const getUserWishlists = async (req, res) => {
             offset
         });
 
+        const wishlists = rows.map((wishlistItem) => {
+            const wishlist = wishlistItem.toJSON();
+            const tour = wishlist.Tour;
+
+            return {
+                wishlist_id: wishlist.wishlist_id,
+                user_id: wishlist.user_id,
+                created_at: wishlist.createdAt,
+                updated_at: wishlist.updatedAt,
+                tour: {
+                    tour_id: tour.tour_id,
+                    name: tour.name,
+                    description: tour.description,
+                    price: tour.price,
+                    start_date: tour.start_date,
+                    end_date: tour.end_date,
+                    available_spots: tour.available_spots,
+                    image: tour.TourImages?.[0]?.image_url
+                        ? addSupabaseUrl(tour.TourImages[0].image_url, TOURS_BUCKET)
+                        : null
+                }
+            };
+        });
+
         res.status(200).json({
             total: count,
             page,
             totalPages: Math.ceil(count / limit),
-            wishlist: rows
+            wishlists,
         });
     } catch (error) {
         console.error('Get wishlist error:', error);

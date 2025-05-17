@@ -1,4 +1,6 @@
 import db from "../models/index.js";
+import {addSupabaseUrl} from "../utils/index.js";
+import {TOURS_BUCKET} from "../constants/index.js";
 
 const { Booking, Tour, User } = db;
 
@@ -103,6 +105,7 @@ export const cancelBooking = async (req, res) => {
 
 export const getUsersBookings = async (req, res) => {
     const user_id = req.userId;
+
     try {
         const page = parseInt(req.query.page || '1');
         const limit = parseInt(req.query.limit || '10');
@@ -118,17 +121,112 @@ export const getUsersBookings = async (req, res) => {
             ],
             order: [['booking_date', 'DESC']],
             limit,
-            offset
+            offset,
+            distinct: true
+        });
+
+        const bookings = rows.map((booking) => {
+            const tour = booking.Tour;
+            const coverImage = tour.TourImages.find((img) => img.is_cover);
+
+            return {
+                booking_id: booking.booking_id,
+                booking_date: booking.booking_date,
+                number_of_people: booking.number_of_people,
+                total_price: booking.total_price,
+                status: booking.status,
+
+                // Flattened tour data
+                tour_name: tour.name,
+                start_date: tour.start_date,
+                end_date: tour.end_date,
+
+                // Flattened destination & category
+                destination_name: tour.Destination?.name || null,
+                category_name: tour.TourCategory?.name || null,
+
+                // Only the cover image
+                image: coverImage ? addSupabaseUrl(coverImage.image_url, TOURS_BUCKET) : null
+            };
         });
 
         res.status(200).json({
             total: count,
             page,
             totalPages: Math.ceil(count / limit),
-            bookings: rows
+            bookings
         });
     } catch (error) {
         console.error('Error fetching user bookings:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+export const getBookingById = async (req, res) => {
+    try {
+        const user_id = req.userId;
+        const booking_id = parseInt(req.params.booking_id, 10);
+
+        // Find the booking with necessary associations
+        const booking = await Booking.findByPk(booking_id, {
+            include: [
+                {
+                    model: Tour,
+                    include: ['Destination', 'TourCategory', 'TourImages']
+                },
+                {
+                    model: User,
+                    include: {
+                        association: 'Role',
+                        attributes: ['role_name']
+                    },
+                    attributes: ['user_id', 'full_name', 'email']
+                }
+            ]
+        });
+
+        if (!booking) {
+            return res.status(404).json({ message: 'Booking not found' });
+        }
+
+        const isOwner = booking.user_id === user_id;
+        const isAdmin = booking.User?.Role?.role_name === 'admin';
+
+        if (!isOwner && !isAdmin) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const tour = booking.Tour;
+        const coverImage = tour.TourImages.find(img => img.is_cover);
+
+        const response = {
+            booking_id: booking.booking_id,
+            booking_date: booking.booking_date,
+            number_of_people: booking.number_of_people,
+            total_price: booking.total_price,
+            status: booking.status,
+
+            // Flattened tour info
+            tour_id: tour.tour_id,
+            tour_name: tour.name,
+            start_date: tour.start_date,
+            end_date: tour.end_date,
+
+            destination_name: tour.Destination?.name || null,
+            category_name: tour.TourCategory?.name || null,
+            image: coverImage ? addSupabaseUrl(coverImage.image_url, TOURS_BUCKET) : null,
+
+            // Optional user info (for admin view)
+            user: isAdmin ? {
+                user_id: booking.User.user_id,
+                full_name: booking.User.full_name,
+                email: booking.User.email
+            } : undefined
+        };
+
+        res.status(200).json(response);
+    } catch (error) {
+        console.error('Error fetching booking by ID:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -152,7 +250,8 @@ export const getAllBookings = async (req, res) => {
             ],
             order: [['booking_date', 'DESC']],
             limit,
-            offset
+            offset,
+            distinct: true
         });
 
         res.status(200).json({

@@ -1,0 +1,3 @@
+export const TOURS_BUCKET = process.env.SUPABASE_BUCKET_TOURS;
+export const DESTINATIONS_BUCKET = process.env.SUPABASE_BUCKET_DESTINATIONS;
+export const BLOGS_BUCKET = process.env.SUPABASE_BUCKET_BLOGS;

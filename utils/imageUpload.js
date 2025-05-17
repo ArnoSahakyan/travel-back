@@ -2,6 +2,8 @@ import sharp from 'sharp';
 import { supabase } from './supabase.js';
 import { v4 as uuid } from 'uuid';
 
+const SUPABASE_STORAGE_URL = process.env.SUPABASE_PUBLIC_URL;
+
 export const uploadAndProcessImages = async (files, bucket, identifier) => {
     const uploadedPaths = [];
     for (const file of files) {
@@ -27,6 +29,10 @@ export const uploadAndProcessImages = async (files, bucket, identifier) => {
     }
 
     return uploadedPaths;
+};
+
+export const addSupabaseUrl = (path, bucket) => {
+    return `${SUPABASE_STORAGE_URL}/${bucket}/${path}`;
 };
 
 export const deleteFromSupabase = async (filePath, bucketName) => {

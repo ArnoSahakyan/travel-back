@@ -1,5 +1,6 @@
 import db from '../models/index.js';
-import {deleteFromSupabase, uploadAndProcessImages} from '../utils/imageUpload.js';
+import {addSupabaseUrl, deleteFromSupabase, uploadAndProcessImages} from '../utils/index.js';
+import {TOURS_BUCKET} from "../constants/index.js";
 
 const { Tour, TourImage } = db;
 
@@ -70,7 +71,7 @@ export const getFilteredTours = async (req, res) => {
             const tourJson = tour.toJSON();
             return {
                 ...tourJson,
-                image: tourJson.TourImages?.[0]?.image_url || null,
+                image: addSupabaseUrl(tourJson.TourImages?.[0]?.image_url, TOURS_BUCKET) || null,
                 TourImages: undefined,
             };
         });
@@ -96,15 +97,39 @@ export const getTourById = async (req, res) => {
             include: [
                 { model: db.TourImage, as: 'TourImages' },
                 { model: db.Destination, as: 'Destination' },
-                { model: db.TourCategory, as: 'TourCategory' }
-            ]
+                { model: db.TourCategory, as: 'TourCategory' },
+            ],
         });
 
         if (!tour) {
             return res.status(404).json({ message: 'Tour not found.' });
         }
 
-        res.json(tour);
+        const plainTour = tour.get({ plain: true });
+
+        // Transform images with full Supabase URLs
+        const images = plainTour.TourImages.map((img) => ({
+            image_id: img.image_id,
+            is_cover: img.is_cover,
+            image_url: addSupabaseUrl(img.image_url, TOURS_BUCKET),
+        }));
+
+        const response = {
+            tour_id: plainTour.tour_id,
+            name: plainTour.name,
+            description: plainTour.description,
+            price: plainTour.price,
+            start_date: plainTour.start_date,
+            end_date: plainTour.end_date,
+            available_spots: plainTour.available_spots,
+
+            category_name: plainTour.TourCategory?.name ?? null,
+            destination_name: plainTour.Destination?.name ?? null,
+
+            images,
+        };
+
+        res.json(response);
     } catch (error) {
         console.error('Get Tour Error:', error);
         res.status(500).json({ message: 'Internal server error.' });
