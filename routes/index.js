@@ -7,6 +7,7 @@ import newsletterRoutes from "./newsletter.routes.js";
 import bookingRoutes from "./booking.routes.js";
 import wishlistRoutes from "./wishlist.routes.js";
 import userRoutes from "./user.routes.js";
+import reviewRoutes from "./review.routes.js";
 
 const router = express.Router();
 
@@ -16,6 +17,7 @@ router.use('/account', userRoutes);
 router.use('/booking', bookingRoutes);
 router.use('/destinations', destinationRoutes);
 router.use('/newsletter', newsletterRoutes);
+router.use('/review', reviewRoutes);
 router.use('/tours', tourRoutes);
 router.use('/tourCategories', tourCategoryRoutes);
 router.use('/wishlist', wishlistRoutes);
