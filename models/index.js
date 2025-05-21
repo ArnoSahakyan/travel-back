@@ -12,6 +12,7 @@ import WishlistModel from './wishlist.model.js';
 import ReviewModel from './review.model.js';
 import BlogPostModel from './blogPost.model.js';
 import NewsletterSubscriberModel from './newsletterSubscriber.model.js';
+import NewsletterVerificationModel from "./newsletterVerification.model.js";
 
 dotenv.config();
 
@@ -49,6 +50,7 @@ db.Wishlist = WishlistModel(sequelize, Sequelize);
 db.Review = ReviewModel(sequelize, Sequelize);
 db.BlogPost = BlogPostModel(sequelize, Sequelize);
 db.NewsletterSubscriber = NewsletterSubscriberModel(sequelize, Sequelize);
+db.NewsletterVerification = NewsletterVerificationModel(sequelize, Sequelize);
 
 // Define associations
 db.Role.hasMany(db.User, { foreignKey: 'role_id' });
