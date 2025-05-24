@@ -53,34 +53,44 @@ db.NewsletterSubscriber = NewsletterSubscriberModel(sequelize, Sequelize);
 db.NewsletterVerification = NewsletterVerificationModel(sequelize, Sequelize);
 
 // Define associations
-db.Role.hasMany(db.User, { foreignKey: 'role_id' });
-db.User.belongsTo(db.Role, { foreignKey: 'role_id', as: 'Role' });
+// Role → Users
+db.Role.hasMany(db.User, { foreignKey: 'role_id', onDelete: 'SET NULL' });
+db.User.belongsTo(db.Role, { foreignKey: 'role_id', as: 'Role', onDelete: 'SET NULL' });
 
-db.Destination.hasMany(db.Tour, { foreignKey: 'destination_id' });
-db.Tour.belongsTo(db.Destination, { foreignKey: 'destination_id' });
+// Destination → Tours
+db.Destination.hasMany(db.Tour, { foreignKey: 'destination_id', onDelete: 'CASCADE' });
+db.Tour.belongsTo(db.Destination, { foreignKey: 'destination_id', onDelete: 'SET NULL' });
 
-db.TourCategory.hasMany(db.Tour, { foreignKey: 'category_id' });
-db.Tour.belongsTo(db.TourCategory, { foreignKey: 'category_id' });
+// TourCategory → Tours
+db.TourCategory.hasMany(db.Tour, { foreignKey: 'category_id', onDelete: 'CASCADE' });
+db.Tour.belongsTo(db.TourCategory, { foreignKey: 'category_id', onDelete: 'SET NULL' });
 
-db.Tour.hasMany(db.TourImage, { foreignKey: 'tour_id' });
-db.TourImage.belongsTo(db.Tour, { foreignKey: 'tour_id' });
+// Tour → TourImages
+db.Tour.hasMany(db.TourImage, { foreignKey: 'tour_id', onDelete: 'CASCADE' });
+db.TourImage.belongsTo(db.Tour, { foreignKey: 'tour_id', onDelete: 'CASCADE' });
 
-db.User.hasMany(db.Booking, { foreignKey: 'user_id' });
-db.Booking.belongsTo(db.User, { foreignKey: 'user_id' });
+// User → Bookings
+db.User.hasMany(db.Booking, { foreignKey: 'user_id', onDelete: 'CASCADE' });
+db.Booking.belongsTo(db.User, { foreignKey: 'user_id', onDelete: 'CASCADE' });
 
-db.Tour.hasMany(db.Booking, { foreignKey: 'tour_id' });
-db.Booking.belongsTo(db.Tour, { foreignKey: 'tour_id' });
+// Tour → Bookings
+db.Tour.hasMany(db.Booking, { foreignKey: 'tour_id', onDelete: 'CASCADE' });
+db.Booking.belongsTo(db.Tour, { foreignKey: 'tour_id', onDelete: 'CASCADE' });
 
-db.User.hasMany(db.Wishlist, { foreignKey: 'user_id' });
-db.Wishlist.belongsTo(db.User, { foreignKey: 'user_id' });
+// User → Wishlist
+db.User.hasMany(db.Wishlist, { foreignKey: 'user_id', onDelete: 'CASCADE' });
+db.Wishlist.belongsTo(db.User, { foreignKey: 'user_id', onDelete: 'CASCADE' });
 
-db.Tour.hasMany(db.Wishlist, { foreignKey: 'tour_id' });
-db.Wishlist.belongsTo(db.Tour, { foreignKey: 'tour_id' });
+// Tour → Wishlist
+db.Tour.hasMany(db.Wishlist, { foreignKey: 'tour_id', onDelete: 'CASCADE' });
+db.Wishlist.belongsTo(db.Tour, { foreignKey: 'tour_id', onDelete: 'CASCADE' });
 
-db.User.hasMany(db.Review, { foreignKey: 'user_id' });
-db.Review.belongsTo(db.User, { foreignKey: 'user_id' });
+// User → Reviews
+db.User.hasMany(db.Review, { foreignKey: 'user_id', onDelete: 'CASCADE' });
+db.Review.belongsTo(db.User, { foreignKey: 'user_id', onDelete: 'CASCADE' });
 
-db.Tour.hasMany(db.Review, { foreignKey: 'tour_id' });
-db.Review.belongsTo(db.Tour, { foreignKey: 'tour_id' });
+// Tour → Reviews
+db.Tour.hasMany(db.Review, { foreignKey: 'tour_id', onDelete: 'CASCADE' });
+db.Review.belongsTo(db.Tour, { foreignKey: 'tour_id', onDelete: 'CASCADE' });
 
 export default db;

@@ -1,5 +1,6 @@
 import db from '../models/index.js';
-import { uploadAndProcessImages, deleteFromSupabase } from '../utils/imageUpload.js';
+import { uploadAndProcessImages, deleteFromSupabase } from '../utils/index.js';
+import {TOURS_BUCKET} from "../constants/index.js";
 
 const { Tour, TourImage } = db;
 
@@ -21,7 +22,7 @@ export const addImagesToTour = async (req, res) => {
             return res.status(400).json({ message: 'A tour can have a maximum of 10 images.' });
         }
 
-        const imagePaths = await uploadAndProcessImages(files, 'tour-images', tourId);
+        const imagePaths = await uploadAndProcessImages(files, TOURS_BUCKET, tourId);
 
         const newImages = await TourImage.bulkCreate(
             imagePaths.map(path => ({
@@ -88,7 +89,7 @@ export const deleteImageForTour = async (req, res) => {
         const wasCover = image.is_cover;
 
         // Delete image from Supabase storage
-        await deleteFromSupabase(image.image_url, 'tour-images');
+        await deleteFromSupabase(image.image_url, TOURS_BUCKET);
 
         // Delete image record from the DB
         await image.destroy();

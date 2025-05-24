@@ -22,7 +22,7 @@ export const createTour = async (req, res) => {
 
         // Upload and process images if any
         if (files && files.length > 0) {
-            const imagePaths = await uploadAndProcessImages(files, 'tour-images', tour.tour_id);
+            const imagePaths = await uploadAndProcessImages(files, TOURS_BUCKET, tour.tour_id);
 
             const imageRecords = imagePaths.map((path, index) => ({
                 tour_id: tour.tour_id,
@@ -195,7 +195,7 @@ export const deleteTour = async (req, res) => {
 
         for (const image of tour.TourImages) {
             if (image.image_url) {
-                await deleteFromSupabase(image.image_url, 'tour-images');
+                await deleteFromSupabase(image.image_url, TOURS_BUCKET);
             }
         }
 

@@ -8,12 +8,14 @@ import bookingRoutes from "./booking.routes.js";
 import wishlistRoutes from "./wishlist.routes.js";
 import userRoutes from "./user.routes.js";
 import reviewRoutes from "./review.routes.js";
+import blogPostRoutes from "./blogPost.routes.js";
 
 const router = express.Router();
 
 // API routes
 router.use('/auth', authRoutes);
 router.use('/account', userRoutes);
+router.use('/blog', blogPostRoutes);
 router.use('/booking', bookingRoutes);
 router.use('/destinations', destinationRoutes);
 router.use('/newsletter', newsletterRoutes);

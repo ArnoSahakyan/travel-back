@@ -1,7 +1,7 @@
 import db from '../models/index.js';
 import {addSupabaseUrl, deleteFromSupabase, uploadAndProcessImages} from '../utils/index.js';
 import {Sequelize} from "sequelize";
-import {DESTINATIONS_BUCKET} from "../constants/index.js"; // your helper function
+import {DESTINATIONS_BUCKET} from "../constants/index.js";
 
 const {Destination} = db;
 
@@ -14,7 +14,7 @@ export const createDestination = async (req, res) => {
         let imagePath = null;
 
         if (file) {
-            const uploaded = await uploadAndProcessImages(file, 'destination-images', name.replace(/\s+/g, '_'));
+            const uploaded = await uploadAndProcessImages(file, DESTINATIONS_BUCKET, name.replace(/\s+/g, '_'));
             imagePath = uploaded[0];
         }
 
@@ -49,10 +49,10 @@ export const updateDestination = async (req, res) => {
         if (file) {
             // Delete the old image if it exists
             if (imagePath) {
-                await deleteFromSupabase(imagePath, 'destination-images');
+                await deleteFromSupabase(imagePath, DESTINATIONS_BUCKET);
             }
 
-            const uploaded = await uploadAndProcessImages(file, 'destination-images', id);
+            const uploaded = await uploadAndProcessImages(file, DESTINATIONS_BUCKET, id);
             imagePath = uploaded[0];
         }
 
@@ -71,8 +71,8 @@ export const updateDestination = async (req, res) => {
 
 export const getAllDestinations = async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1; // Default to page 1
-        const limit = parseInt(req.query.limit) || 10; // Default to 10 items per page
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
         const offset = (page - 1) * limit;
 
         const {count, rows} = await Destination.findAndCountAll({
@@ -157,7 +157,7 @@ export const deleteDestination = async (req, res) => {
 
         // Delete image from Supabase if exists
         if (destination.image) {
-            await deleteFromSupabase(destination.image, 'destination-images');
+            await deleteFromSupabase(destination.image, DESTINATIONS_BUCKET);
         }
 
         await destination.destroy();
