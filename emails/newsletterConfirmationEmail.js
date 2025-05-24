@@ -1,4 +1,4 @@
-export const generateNewsletterConfirmationEmail = ({ token, email }) => {
+export const generateNewsletterConfirmationEmail = ({ token }) => {
     const verificationLink = `${process.env.CORS}/newsletter/verify?token=${token}`;
 
     return `

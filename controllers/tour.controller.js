@@ -91,6 +91,7 @@ export const getFilteredTours = async (req, res) => {
 // Get a single Tour by ID (Public)
 export const getTourById = async (req, res) => {
     const { id } = req.params;
+    const { user_id } = req.query;
 
     try {
         const tour = await Tour.findByPk(id, {
@@ -107,12 +108,22 @@ export const getTourById = async (req, res) => {
 
         const plainTour = tour.get({ plain: true });
 
-        // Transform images with full Supabase URLs
         const images = plainTour.TourImages.map((img) => ({
             image_id: img.image_id,
             is_cover: img.is_cover,
             image_url: addSupabaseUrl(img.image_url, TOURS_BUCKET),
         }));
+
+        let hasReviewed = false;
+        if (user_id) {
+            const existingReview = await db.Review.findOne({
+                where: {
+                    tour_id: id,
+                    user_id: user_id,
+                },
+            });
+            hasReviewed = !!existingReview;
+        }
 
         const response = {
             tour_id: plainTour.tour_id,
@@ -127,6 +138,7 @@ export const getTourById = async (req, res) => {
             destination_name: plainTour.Destination?.name ?? null,
 
             images,
+            hasReviewed,
         };
 
         res.json(response);
