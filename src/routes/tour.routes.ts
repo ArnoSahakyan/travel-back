@@ -6,13 +6,13 @@ import {
     getTourById,
     updateTour,
     deleteTour
-} from '../controllers/tour.controller.js';
+} from '../controllers/tour.controller';
 import {
     addImagesToTour,
     getImagesForTour,
     deleteImageForTour,
     setCoverImage
-} from '../controllers/tourImage.controller.js';
+} from '../controllers/tourImage.controller';
 import { upload } from '../middlewares/upload.middleware';
 
 const router = express.Router();
@@ -25,9 +25,9 @@ router.put('/:id', verifyToken, isAdmin, updateTour);
 router.delete('/:id', verifyToken, isAdmin, deleteTour);
 
 // Tour Image Routes
-router.post('/:tourId/images', verifyToken, isAdmin, upload, addImagesToTour);
-router.get('/:tourId/images', getImagesForTour);
+router.post('/:tour_id/images', verifyToken, isAdmin, upload, addImagesToTour);
+router.get('/:tour_id/images', getImagesForTour);
 router.patch('/cover', verifyToken, isAdmin, setCoverImage);
-router.delete('/:tourId/images/:imageId', verifyToken, isAdmin, deleteImageForTour);
+router.delete('/:tour_id/images/:imageId', verifyToken, isAdmin, deleteImageForTour);
 
 export default router;

@@ -30,8 +30,8 @@ export class Review
     declare comment?: string;
 
     // Optional: timestamps
-    // declare readonly createdAt: Date;
-    // declare readonly updatedAt: Date;
+    // declare readonly created_at: Date;
+    // declare readonly updated_at: Date;
 
     declare User?: User;
     declare Tour?: Tour;

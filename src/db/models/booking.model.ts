@@ -25,8 +25,8 @@ export class Booking
     declare total_price: number;
     declare status: CreationOptional<BookingStatus>;
 
-    // Optional: declare readonly createdAt: Date;
-    // Optional: declare readonly updatedAt: Date;
+    // Optional: declare readonly created_at: Date;
+    // Optional: declare readonly updated_at: Date;
     declare Tour?: Tour;
     declare User?: User;
 

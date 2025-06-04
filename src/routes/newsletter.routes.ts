@@ -5,7 +5,7 @@ import {
     unsubscribeNewsletter,
     checkSubscriptionStatus,
     getAllSubscribers,
-} from '../controllers/newsletter.controller.js';
+} from '../controllers/newsletter.controller';
 import {isAdmin, verifyToken} from "../middlewares/auth.middleware";
 
 const router = express.Router();

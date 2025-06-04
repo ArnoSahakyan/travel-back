@@ -1,23 +1,31 @@
-import db from '../db/models/index.ts';
+import { Request, Response } from 'express';
+import {AuthenticatedRequest} from "../types";
+import {Review, User, Tour, sequelize} from '../db/models';
 
-const { Review, User, Tour } = db;
-
-export const createReview = async (req, res) => {
+export const createReview = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const user_id = req.userId; // assuming you're attaching user to req via middleware
+        const user_id = req.user_id;
+
+        if (!user_id) {
+            res.status(401).json({ message: 'Unauthorized: Missing user ID' });
+            return;
+        }
+
         const { tour_id, rating, comment } = req.body;
 
         if (!tour_id || !rating) {
-            return res.status(400).json({ message: 'tour_id and rating are required' });
+            res.status(400).json({ message: 'tour_id and rating are required' });
+            return;
         }
 
-        // Prevent duplicate reviews by same user for the same tour
+        // Prevent duplicate reviews by the same user for the same tour
         const existingReview = await Review.findOne({
             where: { user_id, tour_id },
         });
 
         if (existingReview) {
-            return res.status(409).json({ message: 'You have already reviewed this tour' });
+            res.status(409).json({ message: 'You have already reviewed this tour' });
+            return;
         }
 
         const review = await Review.create({
@@ -34,10 +42,10 @@ export const createReview = async (req, res) => {
     }
 };
 
-export const getAllReviews = async (req, res) => {
+export const getAllReviews = async (req: Request, res: Response) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 4;
+        const page = Number(req.query.page) || 1;
+        const limit = Number(req.query.limit) || 4;
         const offset = (page - 1) * limit;
 
         const { count, rows } = await Review.findAndCountAll({
@@ -51,7 +59,7 @@ export const getAllReviews = async (req, res) => {
                     attributes: ['name'],
                 },
             ],
-            order: db.sequelize.random(),
+            order: sequelize.random(),
             limit,
             offset,
         });
@@ -60,8 +68,8 @@ export const getAllReviews = async (req, res) => {
             const review = reviewItem.toJSON();
             return {
                 ...review,
-                full_name: review.User.full_name,
-                tour_name: review.Tour.name,
+                full_name: review.User?.full_name,
+                tour_name: review.Tour?.name,
                 User: undefined,
                 Tour: undefined
             }
@@ -79,12 +87,12 @@ export const getAllReviews = async (req, res) => {
 };
 
 
-export const getReviewsForTour = async (req, res) => {
+export const getReviewsForTour = async (req: Request, res: Response) => {
     try {
         const { tour_id } = req.params;
 
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 4;
+        const page = Number(req.query.page) || 1;
+        const limit = Number(req.query.limit) || 4;
         const offset = (page - 1) * limit;
 
         const { count, rows } = await Review.findAndCountAll({
@@ -99,7 +107,7 @@ export const getReviewsForTour = async (req, res) => {
                     attributes: ['name'],
                 },
             ],
-            order: [['createdAt', 'DESC']],
+            order: [['created_at', 'DESC']],
             limit,
             offset,
         });
@@ -108,8 +116,8 @@ export const getReviewsForTour = async (req, res) => {
             const review = reviewItem.toJSON();
             return {
                 ...review,
-                full_name: review.User.full_name,
-                tour_name: review.Tour.name,
+                full_name: review.User?.full_name,
+                tour_name: review.Tour?.name,
                 User: undefined,
                 Tour: undefined
             }
@@ -127,14 +135,15 @@ export const getReviewsForTour = async (req, res) => {
     }
 };
 
-export const deleteReview = async (req, res) => {
+export const deleteReview = async (req: Request, res: Response) => {
     try {
         const { review_id } = req.params;
 
-        const deleted = await db.Review.destroy({ where: { review_id } });
+        const deleted = await Review.destroy({ where: { review_id } });
 
         if (!deleted) {
-            return res.status(404).json({ message: 'Review not found' });
+            res.status(404).json({ message: 'Review not found' });
+            return;
         }
 
         res.status(200).json({ message: 'Review deleted successfully' });

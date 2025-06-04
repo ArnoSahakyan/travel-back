@@ -1,17 +1,17 @@
-import db from '../db/models/index.ts';
-import {addSupabaseUrl, deleteFromSupabase, uploadAndProcessImages} from '../utils/index.ts';
+import {addSupabaseUrl, deleteFromSupabase, uploadAndProcessImages} from '../utils';
 import {Sequelize} from "sequelize";
-import {DESTINATIONS_BUCKET} from "../constants/index.ts";
-
-const {Destination} = db;
+import {DESTINATIONS_BUCKET} from "../constants";
+import {Destination} from "../db/models";
+import {AuthenticatedRequest} from "../types";
+import { Request, Response } from 'express';
 
 // Create Destination (Admin only)
-export const createDestination = async (req, res) => {
+export const createDestination = async (req: AuthenticatedRequest, res: Response) => {
     const {name, description} = req.body;
     const file = req.files;
 
     try {
-        let imagePath = null;
+        let imagePath;
 
         if (file) {
             const uploaded = await uploadAndProcessImages(file, DESTINATIONS_BUCKET, name.replace(/\s+/g, '_'));
@@ -32,7 +32,7 @@ export const createDestination = async (req, res) => {
 };
 
 // Update Destination (Admin only)
-export const updateDestination = async (req, res) => {
+export const updateDestination = async (req: AuthenticatedRequest, res: Response) => {
     const {id} = req.params;
     const {name, description} = req.body;
     const file = req.files;
@@ -41,7 +41,8 @@ export const updateDestination = async (req, res) => {
         const destination = await Destination.findByPk(id);
 
         if (!destination) {
-            return res.status(404).json({message: 'Destination not found.'});
+            res.status(404).json({message: 'Destination not found.'});
+            return;
         }
 
         let imagePath = destination.image;
@@ -69,10 +70,10 @@ export const updateDestination = async (req, res) => {
     }
 };
 
-export const getAllDestinations = async (req, res) => {
+export const getAllDestinations = async (req: Request, res: Response) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
+        const page = Number(req.query.page) || 1;
+        const limit = Number(req.query.limit) || 10;
         const offset = (page - 1) * limit;
 
         const {count, rows} = await Destination.findAndCountAll({
@@ -84,7 +85,7 @@ export const getAllDestinations = async (req, res) => {
                     [
                         Sequelize.literal(`(
                           SELECT COUNT(*)
-                          FROM "Tours" AS "Tour"
+                          FROM "tours" AS "Tour"
                           WHERE "Tour"."destination_id" = "Destination"."destination_id"
                         )`),
                         'tourCount',
@@ -93,7 +94,7 @@ export const getAllDestinations = async (req, res) => {
                     [
                         Sequelize.literal(`(
                           SELECT MIN("Tour"."price")
-                          FROM "Tours" AS "Tour"
+                          FROM "tours" AS "Tour"
                           WHERE "Tour"."destination_id" = "Destination"."destination_id"
                         )`),
                         'startingPrice',
@@ -123,14 +124,15 @@ export const getAllDestinations = async (req, res) => {
     }
 };
 
-export const getDestinationById = async (req, res) => {
+export const getDestinationById = async (req: Request, res: Response) => {
     const { id } = req.params;
 
     try {
         const destination = await Destination.findByPk(id);
 
         if (!destination) {
-            return res.status(404).json({ message: 'Destination not found.' });
+            res.status(404).json({ message: 'Destination not found.' });
+            return;
         }
 
         const plainDestination = destination.get({ plain: true });
@@ -145,14 +147,15 @@ export const getDestinationById = async (req, res) => {
     }
 };
 
-export const deleteDestination = async (req, res) => {
+export const deleteDestination = async (req: AuthenticatedRequest, res: Response) => {
     const {id} = req.params;
 
     try {
         const destination = await Destination.findByPk(id);
 
         if (!destination) {
-            return res.status(404).json({message: 'Destination not found.'});
+            res.status(404).json({message: 'Destination not found.'});
+            return;
         }
 
         // Delete image from Supabase if exists

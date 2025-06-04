@@ -1,8 +1,8 @@
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import dotenv from 'dotenv';
-import { Response, NextFunction } from 'express';
+import { RequestHandler, Response, NextFunction } from 'express';
 import { User } from '../db/models';
-import {AuthenticatedRequest} from "../types";
+import { AuthenticatedRequest } from '../types';
 
 dotenv.config();
 
@@ -10,8 +10,12 @@ interface CustomJwtPayload extends JwtPayload {
     user_id: number;
 }
 
-// Middleware to verify access token
-export const verifyToken = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+// ✅ Cast middleware to RequestHandler to match Express's expectations
+export const verifyToken: RequestHandler = (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+) => {
     const authHeader = req.headers['authorization'];
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -32,8 +36,12 @@ export const verifyToken = (req: AuthenticatedRequest, res: Response, next: Next
     });
 };
 
-// Middleware to check if user is an admin
-export const isAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+// ✅ Same cast here
+export const isAdmin: RequestHandler = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+) => {
     try {
         const user = await User.findByPk(req.user_id, {
             include: {

@@ -1,3 +1,5 @@
+'use strict';
+
 module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('bookings', {
@@ -10,21 +12,27 @@ module.exports = {
       user_id: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        references: { model: 'users', key: 'user_id' },
+        references: {
+          model: 'users',
+          key: 'user_id',
+        },
         onDelete: 'CASCADE',
         onUpdate: 'CASCADE',
       },
       tour_id: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        references: { model: 'tours', key: 'tour_id' },
+        references: {
+          model: 'tours',
+          key: 'tour_id',
+        },
         onDelete: 'CASCADE',
         onUpdate: 'CASCADE',
       },
       booking_date: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW,
+        defaultValue: Sequelize.fn('NOW'),
       },
       number_of_people: {
         type: Sequelize.INTEGER,
@@ -35,25 +43,31 @@ module.exports = {
         allowNull: false,
       },
       status: {
-        type: Sequelize.ENUM('pending', 'confirmed', 'cancelled', 'completed', 'no_show', 'refunded'),
+        type: Sequelize.ENUM(
+            'pending',
+            'confirmed',
+            'cancelled',
+            'completed',
+            'no_show',
+            'refunded'
+        ),
         allowNull: false,
         defaultValue: 'pending',
       },
       created_at: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW,
+        defaultValue: Sequelize.fn('NOW'),
       },
       updated_at: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW,
+        defaultValue: Sequelize.fn('NOW'),
       },
     });
-
   },
+
   async down(queryInterface) {
     await queryInterface.dropTable('bookings');
-    await queryInterface.sequelize.query('DROP TYPE IF EXISTS enum_bookings_status;');
   },
-}
+};

@@ -5,7 +5,7 @@ import tourRoutes from './tour.routes';
 import categoryRoutes from "./category.routes";
 import newsletterRoutes from "./newsletter.routes";
 import bookingRoutes from "./booking.routes";
-import wishlistRoutes from "./wishlist.routes";
+import favoriteRoutes from "./favorite.routes";
 import userRoutes from "./user.routes";
 import reviewRoutes from "./review.routes";
 import postRoutes from "./post.routes";
@@ -22,6 +22,6 @@ router.use('/newsletter', newsletterRoutes);
 router.use('/review', reviewRoutes);
 router.use('/tours', tourRoutes);
 router.use('/categories', categoryRoutes);
-router.use('/wishlist', wishlistRoutes);
+router.use('/favorite', favoriteRoutes);
 
 export default router;

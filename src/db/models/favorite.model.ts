@@ -5,16 +5,19 @@ import {
     InferAttributes,
     InferCreationAttributes,
     CreationOptional,
-    ForeignKey, Association,
+    ForeignKey,
+    Association,
 } from 'sequelize';
-import { Tour } from "./tour.model";
-import { User } from "./user.model";
-import {DbModels} from "../../types";
+import { Tour } from './tour.model';
+import { User } from './user.model';
+import { DbModels } from '../../types';
 
 export interface FavoriteAttributes {
     favorite_id: number;
     user_id: number;
     tour_id: number;
+    created_at?: Date;
+    updated_at?: Date;
 }
 
 export class Favorite
@@ -24,6 +27,9 @@ export class Favorite
     declare favorite_id: CreationOptional<number>;
     declare user_id: ForeignKey<number>;
     declare tour_id: ForeignKey<number>;
+
+    declare created_at: CreationOptional<Date>;
+    declare updated_at: CreationOptional<Date>;
 
     declare User?: User;
     declare Tour?: Tour;
@@ -54,6 +60,16 @@ export default function initFavoriteModel(sequelize: Sequelize): typeof Favorite
             tour_id: {
                 type: DataTypes.INTEGER,
                 allowNull: false,
+            },
+            created_at: {
+                type: DataTypes.DATE,
+                allowNull: false,
+                defaultValue: DataTypes.NOW,
+            },
+            updated_at: {
+                type: DataTypes.DATE,
+                allowNull: false,
+                defaultValue: DataTypes.NOW,
             },
         },
         {

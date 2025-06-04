@@ -38,7 +38,7 @@ server.js           # Entry point
 - ✅ User Signup / Login with JWT
 - ✅ Role-based Access (admin & customer)
 - ✅ Tour and Destination Models
-- ✅ Wishlists, Bookings, Reviews
+- ✅ Favorites, Bookings, Reviews
 - 🔄 Refresh Tokens
 - 🔜 Admin management panel
 - 🔜 Blog & Newsletter functionality

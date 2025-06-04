@@ -14,13 +14,15 @@ export const signUp = async (req: Request, res: Response) => {
     const { full_name, email, password, phone } = req.body;
 
     if (!full_name || !email || !password) {
-        return res.status(400).json({ message: 'Name, email, and password are required.' });
+        res.status(400).json({ message: 'Name, email, and password are required.' });
+        return;
     }
 
     try {
         const existingUser = await User.findOne({ where: { email }, paranoid: false });
         if (existingUser) {
-            return res.status(409).json({ message: 'Email already in use.' });
+            res.status(409).json({ message: 'Email already in use.' });
+            return;
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -44,7 +46,8 @@ export const signIn = async (req: Request, res: Response) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-        return res.status(400).json({ message: 'Email and password are required.' });
+        res.status(400).json({ message: 'Email and password are required.' });
+        return;
     }
 
     try {
@@ -54,12 +57,14 @@ export const signIn = async (req: Request, res: Response) => {
         });
 
         if (!user) {
-            return res.status(401).json({ message: 'Invalid credentials.' });
+            res.status(401).json({ message: 'Invalid credentials.' });
+            return;
         }
 
         const valid = await bcrypt.compare(password, user.password);
         if (!valid) {
-            return res.status(401).json({ message: 'Invalid credentials.' });
+            res.status(401).json({ message: 'Invalid credentials.' });
+            return;
         }
 
         const token = generateToken(user);
@@ -85,7 +90,8 @@ export const refreshToken = async (req: Request, res: Response) => {
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
-        return res.status(400).json({ message: 'Refresh token is required.' });
+        res.status(400).json({ message: 'Refresh token is required.' });
+        return;
     }
 
     try {
@@ -100,7 +106,8 @@ export const refreshToken = async (req: Request, res: Response) => {
         });
 
         if (!user) {
-            return res.status(401).json({ message: 'User not found.' });
+            res.status(401).json({ message: 'User not found.' });
+            return;
         }
 
         const newAccessToken = generateToken(user);
@@ -118,7 +125,8 @@ export const userInfo = async (req: AuthenticatedRequest, res: Response) => {
     const user_id = req.user_id;
 
     if (!user_id) {
-        return res.status(401).json({ message: 'Unauthorized.' });
+        res.status(401).json({ message: 'Unauthorized.' });
+        return;
     }
 
     try {
@@ -131,7 +139,8 @@ export const userInfo = async (req: AuthenticatedRequest, res: Response) => {
         });
 
         if (!user) {
-            return res.status(404).json({ message: 'User not found.' });
+            res.status(404).json({ message: 'User not found.' });
+            return;
         }
 
         res.json({

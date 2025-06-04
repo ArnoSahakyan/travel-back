@@ -6,7 +6,7 @@ import {
     getDestinationById,
     updateDestination,
     deleteDestination,
-} from '../controllers/destinations.controller.js';
+} from '../controllers/destinations.controller';
 import {upload} from "../middlewares/upload.middleware";
 
 const router = express.Router();

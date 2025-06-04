@@ -1,4 +1,3 @@
-// user.model.ts
 import {
     DataTypes,
     Model,
@@ -18,8 +17,8 @@ export interface UserAttributes {
     password: string;
     phone_number?: string;
     role_id?: number;
-    createdAt?: Date;
-    updatedAt?: Date;
+    created_at?: Date;
+    updated_at?: Date;
     deletedAt?: Date | null;
 }
 
@@ -34,8 +33,8 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
     public phone_number?: string;
     public role_id?: number;
 
-    public readonly createdAt!: Date;
-    public readonly updatedAt!: Date;
+    public readonly created_at!: Date;
+    public readonly updated_at!: Date;
     public readonly deletedAt!: Date | null;
 
     // ASSOCIATION FIELDS (for TypeScript)
@@ -93,6 +92,7 @@ export default function initUserModel(sequelize: Sequelize): void {
             modelName: 'User',
             tableName: 'users',
             paranoid: true,
+            underscored: true,
         }
     );
 }

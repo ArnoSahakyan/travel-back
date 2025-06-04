@@ -7,12 +7,14 @@ import {
     CreationOptional,
     Association,
 } from 'sequelize';
-import {User} from './user.model';
-import {DbModels} from "../../types";
+import { User } from './user.model';
+import { DbModels } from "../../types";
 
 export interface RoleAttributes {
     role_id: number;
     name: string;
+    created_at?: Date;
+    updated_at?: Date;
 }
 
 export class Role
@@ -20,6 +22,9 @@ export class Role
     implements RoleAttributes {
     declare role_id: CreationOptional<number>;
     declare name: string;
+
+    declare readonly created_at: Date;
+    declare readonly updated_at: Date;
 
     declare users?: User[];
 
@@ -49,12 +54,22 @@ export default function initRoleModel(sequelize: Sequelize): typeof Role {
                 allowNull: false,
                 unique: true,
             },
+            created_at: {
+                type: DataTypes.DATE,
+                allowNull: false,
+                defaultValue: DataTypes.NOW,
+            },
+            updated_at: {
+                type: DataTypes.DATE,
+                allowNull: false,
+                defaultValue: DataTypes.NOW,
+            },
         },
         {
             sequelize,
             modelName: Role.name,
             tableName: 'roles',
-            timestamps: false,
+            timestamps: true,
             underscored: true,
         }
     );

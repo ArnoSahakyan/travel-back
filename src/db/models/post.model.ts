@@ -28,10 +28,6 @@ export class Post
     declare content?: string;
     declare image?: string;
     declare is_published: CreationOptional<boolean>;
-
-    // timestamps (optional):
-    // declare readonly createdAt: Date;
-    // declare readonly updatedAt: Date;
 }
 
 export default function initPostModel(sequelize: Sequelize): typeof Post {
@@ -66,7 +62,7 @@ export default function initPostModel(sequelize: Sequelize): typeof Post {
             is_published: {
                 type: DataTypes.BOOLEAN,
                 defaultValue: false,
-            },
+            }
         },
         {
             sequelize,

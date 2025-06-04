@@ -13,7 +13,7 @@ export const getAllPosts = async (req: Request<any, {test: string}>, res: Respon
             limit,
             offset,
             where: { is_published: true },
-            order: [['createdAt', 'DESC']],
+            order: [['created_at', 'DESC']],
             attributes: { exclude: ['content'] }
         });
 

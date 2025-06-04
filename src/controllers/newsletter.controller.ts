@@ -1,21 +1,23 @@
+import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import db from '../db/models/index.ts';
-import {sendEmail} from "../utils/index.ts";
-import {generateNewsletterConfirmationEmail} from "../emails/newsletterConfirmationEmail.ts";
+import { NewsletterSubscriber, NewsletterVerification, User } from '../db/models'
+import {sendEmail} from "../utils";
+import {generateNewsletterConfirmationEmail} from "../emails/newsletterConfirmationEmail";
+import {AuthenticatedRequest} from "../types";
 
-const { NewsletterSubscriber, NewsletterVerification, User } = db;
-
-export const requestNewsletterSubscription = async (req, res) => {
+export const requestNewsletterSubscription = async (req: Request, res: Response) => {
     const { email } = req.body;
 
     if (!email) {
-        return res.status(400).json({ message: 'Email is required.' });
+        res.status(400).json({ message: 'Email is required.' });
+        return;
     }
 
     try {
         const existingSubscriber = await NewsletterSubscriber.findOne({ where: { email } });
         if (existingSubscriber) {
-            return res.status(400).json({ message: 'This email is already subscribed.' });
+            res.status(400).json({ message: 'This email is already subscribed.' });
+            return;
         }
 
         const existingVerification = await NewsletterVerification.findOne({ where: { email } });
@@ -45,23 +47,26 @@ export const requestNewsletterSubscription = async (req, res) => {
     }
 };
 
-export const verifyNewsletterSubscription = async (req, res) => {
+export const verifyNewsletterSubscription = async (req: Request, res: Response) => {
     const { token } = req.query;
 
-    if (!token) {
-        return res.status(400).json({ message: 'Token is required.' });
+    if (!token || typeof token !== 'string') {
+        res.status(400).json({ message: 'Token is required.' });
+        return;
     }
 
     try {
         const verification = await NewsletterVerification.findOne({ where: { token } });
 
         if (!verification) {
-            return res.status(404).json({ message: 'Invalid or expired token.' });
+            res.status(404).json({ message: 'Invalid or expired token.' });
+            return;
         }
 
         if (new Date() > verification.expires_at) {
             await verification.destroy();
-            return res.status(400).json({ message: 'Token has expired.' });
+            res.status(400).json({ message: 'Token has expired.' });
+            return;
         }
 
         await NewsletterSubscriber.create({ email: verification.email });
@@ -74,33 +79,36 @@ export const verifyNewsletterSubscription = async (req, res) => {
     }
 };
 
-export const unsubscribeNewsletter = async (req, res) => {
+export const unsubscribeNewsletter = async (req: AuthenticatedRequest, res: Response) => {
     try {
         let email;
 
-        // 1. If user is logged in
+        // 1. If a user is logged in
         if (req.user_id) {
             const user = await User.findByPk(req.user_id);
             if (!user) {
-                return res.status(404).json({ message: 'User not found' });
+                res.status(404).json({ message: 'User not found' });
+                return;
             }
             email = user.email;
         }
 
         // 2. If email is passed as a query parameter
-        if (!email && req.query.email) {
+        if (!email && typeof req.query.email === 'string') {
             email = req.query.email;
         }
 
         if (!email) {
-            return res.status(400).json({ message: 'Email is required to unsubscribe.' });
+            res.status(400).json({ message: 'Email is required to unsubscribe.' });
+            return;
         }
 
         // 3. Find and delete subscriber
         const subscriber = await NewsletterSubscriber.findOne({ where: { email } });
 
         if (!subscriber) {
-            return res.status(404).json({ message: 'Subscriber not found.' });
+            res.status(404).json({ message: 'Subscriber not found.' });
+            return;
         }
 
         await subscriber.destroy();
@@ -111,18 +119,20 @@ export const unsubscribeNewsletter = async (req, res) => {
     }
 };
 
-export const checkSubscriptionStatus = async (req, res) => {
+export const checkSubscriptionStatus = async (req: AuthenticatedRequest, res: Response) => {
     try {
         const user_id = req.user_id;
 
         if (!user_id) {
-            return res.status(401).json({ message: 'Unauthorized' });
+            res.status(401).json({ message: 'Unauthorized' });
+            return;
         }
 
         const user = await User.findByPk(user_id);
 
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            res.status(404).json({ message: 'User not found' });
+            return;
         }
 
         const subscriber = await NewsletterSubscriber.findOne({
@@ -136,7 +146,7 @@ export const checkSubscriptionStatus = async (req, res) => {
     }
 };
 
-export const getAllSubscribers = async (_req, res) => {
+export const getAllSubscribers = async (_req: Request, res: Response) => {
     try {
         const subscribers = await NewsletterSubscriber.findAll();
         res.json(subscribers);

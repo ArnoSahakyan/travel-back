@@ -10,19 +10,28 @@ export const createBooking = async (
 ) => {
     try {
         const user_id = req.user_id;
+
+        if (!user_id) {
+            res.status(401).json({ message: 'Unauthorized: Missing user ID' });
+            return;
+        }
+
         const { tour_id, number_of_people } = req.body;
 
         if (!tour_id || !number_of_people || number_of_people < 1) {
-            return res.status(400).json({ message: 'Invalid booking data' });
+            res.status(400).json({ message: 'Invalid booking data' });
+            return;
         }
 
         const tour = await Tour.findByPk(tour_id);
         if (!tour) {
-            return res.status(404).json({ message: 'Tour not found' });
+            res.status(404).json({ message: 'Tour not found' });
+            return;
         }
 
         if (tour.available_spots < number_of_people) {
-            return res.status(400).json({ message: 'Not enough spots available' });
+            res.status(400).json({ message: 'Not enough spots available' });
+            return;
         }
 
         const total_price = tour.price * number_of_people;
@@ -53,7 +62,10 @@ export const cancelBooking = async (
         const booking_id = parseInt(req.params.booking_id, 10);
 
         const booking = await Booking.findByPk(booking_id);
-        if (!booking) return res.status(404).json({ message: 'Booking not found' });
+        if (!booking) {
+            res.status(404).json({ message: 'Booking not found' });
+            return;
+        }
 
         const user = await User.findByPk(user_id, {
             include: {
@@ -65,12 +77,14 @@ export const cancelBooking = async (
         const isAdmin = user?.Role?.name === 'admin';
 
         if (booking.user_id !== user_id && !isAdmin) {
-            return res.status(403).json({ message: 'Unauthorized' });
+            res.status(403).json({ message: 'Unauthorized' });
+            return;
         }
 
         const tour = await Tour.findByPk(booking.tour_id);
         if (!tour) {
-            return res.status(500).json({ message: 'Associated tour not found' });
+            res.status(500).json({ message: 'Associated tour not found' });
+            return;
         }
 
         const now = new Date();
@@ -78,9 +92,10 @@ export const cancelBooking = async (
         const diffInDays = (startDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
 
         if (!isAdmin && diffInDays < 3) {
-            return res.status(400).json({
+            res.status(400).json({
                 message: 'Bookings can only be cancelled at least 3 days before the tour starts.'
             });
+            return;
         }
 
         tour.available_spots += booking.number_of_people;
@@ -162,13 +177,14 @@ export const getBookingById = async (
             include: [
                 {
                     model: Tour,
-                    include: [Destination, Category, TourImage] // 👈 use actual models here
+                    include: [Destination, Category, TourImage]
                 },
                 {
                     model: User,
                     include: [
                         {
                             model: Role,
+                            as: 'Role',
                             attributes: ['name']
                         }
                     ],
@@ -179,14 +195,16 @@ export const getBookingById = async (
         });
 
         if (!booking) {
-            return res.status(404).json({ message: 'Booking not found' });
+            res.status(404).json({ message: 'Booking not found' });
+            return;
         }
 
         const isOwner = booking.user_id === user_id;
         const isAdmin = booking.User?.Role?.name === 'admin';
 
         if (!isOwner && !isAdmin) {
-            return res.status(403).json({ message: 'Unauthorized' });
+            res.status(403).json({ message: 'Unauthorized' });
+            return;
         }
 
         const tour = booking.Tour;

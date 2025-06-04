@@ -1,3 +1,5 @@
+'use strict';
+
 module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('reviews', {
@@ -10,10 +12,22 @@ module.exports = {
       user_id: {
         type: Sequelize.INTEGER,
         allowNull: false,
+        references: {
+          model: 'users',    // assumes users table exists
+          key: 'user_id',
+        },
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
       },
       tour_id: {
         type: Sequelize.INTEGER,
         allowNull: false,
+        references: {
+          model: 'tours',    // assumes tours table exists
+          key: 'tour_id',
+        },
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
       },
       rating: {
         type: Sequelize.INTEGER,
@@ -26,16 +40,17 @@ module.exports = {
       created_at: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW,
+        defaultValue: Sequelize.fn('NOW'),
       },
       updated_at: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW,
+        defaultValue: Sequelize.fn('NOW'),
       },
     });
   },
+
   async down(queryInterface) {
     await queryInterface.dropTable('reviews');
   },
-}
+};

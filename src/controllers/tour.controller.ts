@@ -1,13 +1,20 @@
-import db from '../db/models/index.ts';
-import {addSupabaseUrl, deleteFromSupabase, uploadAndProcessImages} from '../utils/index.ts';
-import {TOURS_BUCKET} from "../constants/index.ts";
-
-const { Tour, TourImage } = db;
+import { Request, Response } from 'express';
+import {Category, Destination, Review, Tour, TourImage} from '../db/models';
+import {addSupabaseUrl, deleteFromSupabase, uploadAndProcessImages} from '../utils';
+import {TOURS_BUCKET} from "../constants";
+import {AuthenticatedRequest} from "../types";
+import {WhereOptions} from "sequelize";
 
 // Create Tour (Admin only)
-export const createTour = async (req, res) => {
+export const createTour = async (req: AuthenticatedRequest, res: Response) => {
     const { name, description, price, available_spots, start_date, end_date, category_id, destination_id } = req.body;
     const files = req.files;
+
+    if (!files || !Array.isArray(files)) {
+        res.status(400).json({ message: 'No files uploaded' });
+        return;
+    }
+
     try {
         const tour = await Tour.create({
             name,
@@ -41,13 +48,13 @@ export const createTour = async (req, res) => {
 };
 
 // Get Tours with Optional Filters (category_id, destination_id, pagination)
-export const getFilteredTours = async (req, res) => {
+export const getFilteredTours = async (req: Request, res: Response) => {
     const { category_id, destination_id } = req.query;
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
     const offset = (page - 1) * limit;
 
-    const where = {};
+    const where: WhereOptions = {};
     if (category_id) where.category_id = category_id;
     if (destination_id) where.destination_id = destination_id;
 
@@ -58,7 +65,7 @@ export const getFilteredTours = async (req, res) => {
             offset,
             include: [
                 {
-                    model: db.TourImage,
+                    model: TourImage,
                     as: 'TourImages',
                     where: { is_cover: true },
                     required: false,
@@ -89,37 +96,38 @@ export const getFilteredTours = async (req, res) => {
 };
 
 // Get a single Tour by ID (Public)
-export const getTourById = async (req, res) => {
+export const getTourById = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { user_id } = req.query;
 
     try {
         const tour = await Tour.findByPk(id, {
             include: [
-                { model: db.TourImage, as: 'TourImages' },
-                { model: db.Destination, as: 'Destination' },
-                { model: db.Category, as: 'Category' },
+                { model: TourImage, as: 'TourImages' },
+                { model: Destination, as: 'Destination' },
+                { model: Category, as: 'Category' },
             ],
         });
 
         if (!tour) {
-            return res.status(404).json({ message: 'Tour not found.' });
+            res.status(404).json({ message: 'Tour not found.' });
+            return;
         }
 
         const plainTour = tour.get({ plain: true });
 
-        const images = plainTour.TourImages.map((img) => ({
+        const images = plainTour.TourImages?.map((img) => ({
             image_id: img.image_id,
             is_cover: img.is_cover,
             image_url: addSupabaseUrl(img.image_url, TOURS_BUCKET),
         }));
 
         let hasReviewed = false;
-        if (user_id) {
-            const existingReview = await db.Review.findOne({
+        if (user_id && typeof user_id === 'string' && !isNaN(Number(user_id))) {
+            const existingReview = await Review.findOne({
                 where: {
-                    tour_id: id,
-                    user_id: user_id,
+                    tour_id: Number(id),
+                    user_id: Number(user_id),
                 },
             });
             hasReviewed = !!existingReview;
@@ -149,7 +157,7 @@ export const getTourById = async (req, res) => {
 };
 
 // Update Tour by ID (Admin only)
-export const updateTour = async (req, res) => {
+export const updateTour = async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
     const { name, description, price, available_spots, start_date, end_date, category_id, destination_id } = req.body;
 
@@ -157,7 +165,8 @@ export const updateTour = async (req, res) => {
         const tour = await Tour.findByPk(id);
 
         if (!tour) {
-            return res.status(404).json({ message: 'Tour not found.' });
+            res.status(404).json({ message: 'Tour not found.' });
+            return;
         }
 
         await tour.update({
@@ -179,7 +188,7 @@ export const updateTour = async (req, res) => {
 };
 
 // Delete Tour by ID (Admin only)
-export const deleteTour = async (req, res) => {
+export const deleteTour = async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
 
     try {
@@ -190,13 +199,18 @@ export const deleteTour = async (req, res) => {
         });
 
         if (!tour) {
-            return res.status(404).json({ message: 'Tour not found.' });
+            res.status(404).json({ message: 'Tour not found.' });
+            return;
         }
 
-        for (const image of tour.TourImages) {
-            if (image.image_url) {
-                await deleteFromSupabase(image.image_url, TOURS_BUCKET);
+        if (tour.TourImages && tour.TourImages.length > 0) {
+            for (const image of tour.TourImages) {
+                if (image.image_url) {
+                    await deleteFromSupabase(image.image_url, TOURS_BUCKET);
+                }
             }
+
+            await TourImage.destroy({ where: { tour_id: id } });
         }
 
         // Delete TourImages records from DB

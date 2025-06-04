@@ -1,3 +1,5 @@
+'use strict';
+
 module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('newsletter_subscribers', {
@@ -15,11 +17,12 @@ module.exports = {
       subscribed_at: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW,
+        defaultValue: Sequelize.fn('NOW'),
       },
     });
   },
+
   async down(queryInterface) {
     await queryInterface.dropTable('newsletter_subscribers');
   },
-}
+};

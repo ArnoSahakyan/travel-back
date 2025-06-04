@@ -5,7 +5,7 @@ dotenv.config();
 
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
+    port: Number(process.env.SMTP_PORT),
     secure: process.env.SMTP_SECURE === 'true',
     auth: {
         user: process.env.SMTP_USER,
@@ -13,7 +13,14 @@ const transporter = nodemailer.createTransport({
     },
 });
 
-export const sendEmail = async ({ to, subject, html }) => {
+// Define a type for the email sending parameters
+interface SendEmailParams {
+    to: string;
+    subject: string;
+    html: string;
+}
+
+export const sendEmail = async ({ to, subject, html }: SendEmailParams): Promise<void> => {
     const mailOptions = {
         from: `"Wanderluxe Travel" <${process.env.SMTP_USER}>`,
         to,
