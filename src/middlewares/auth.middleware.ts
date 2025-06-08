@@ -10,7 +10,6 @@ interface CustomJwtPayload extends JwtPayload {
     user_id: number;
 }
 
-// ✅ Cast middleware to RequestHandler to match Express's expectations
 export const verifyToken: RequestHandler = (
     req: AuthenticatedRequest,
     res: Response,
@@ -36,7 +35,6 @@ export const verifyToken: RequestHandler = (
     });
 };
 
-// ✅ Same cast here
 export const isAdmin: RequestHandler = async (
     req: AuthenticatedRequest,
     res: Response,

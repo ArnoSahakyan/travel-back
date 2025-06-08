@@ -8,13 +8,14 @@ import {
     deleteDestination,
 } from '../controllers/destinations.controller';
 import {upload} from "../middlewares/upload.middleware";
+import {asHandler} from "../utils";
 
 const router = express.Router();
 
-router.get('/', getAllDestinations);
-router.get('/:id', getDestinationById);
-router.post('/', verifyToken, isAdmin, upload, createDestination);
-router.put('/:id', verifyToken, isAdmin, upload, updateDestination);
-router.delete('/:id', verifyToken, isAdmin, deleteDestination);
+router.get('/', asHandler(getAllDestinations));
+router.get('/:id', asHandler(getDestinationById));
+router.post('/', verifyToken, isAdmin, upload, asHandler(createDestination));
+router.put('/:id', verifyToken, isAdmin, upload, asHandler(updateDestination));
+router.delete('/:id', verifyToken, isAdmin, asHandler(deleteDestination));
 
 export default router;

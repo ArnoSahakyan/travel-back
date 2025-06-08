@@ -2,14 +2,19 @@ import sharp from 'sharp';
 import { supabase } from './supabase';
 import { v4 as uuid } from 'uuid';
 
-const SUPABASE_STORAGE_URL = process.env.SUPABASE_PUBLIC_URL;
+const SUPABASE_STORAGE_URL = process.env.SUPABASE_PUBLIC_URL || '';
 
-export const uploadAndProcessImages = async (files, bucket, identifier) => {
-    const uploadedPaths = [];
+export const uploadAndProcessImages = async (
+    files: Express.Multer.File[],
+    bucket: string,
+    identifier: string | number
+): Promise<string[]> => {
+    const uploadedPaths: string[] = [];
+
     for (const file of files) {
         const filename = `${identifier}_${uuid()}.webp`;
         const folder = `${identifier}`;
-        const fullPath = `${folder}/${filename}`; // e.g. tour-id/unique.webp
+        const fullPath = `${folder}/${filename}`;
 
         const buffer = await sharp(file.buffer)
             .resize({ width: 1500 })
@@ -23,19 +28,22 @@ export const uploadAndProcessImages = async (files, bucket, identifier) => {
                 upsert: false,
             });
 
-        if (error) throw error;
+        if (error) throw new Error(`Supabase upload failed: ${error.message}`);
 
-        uploadedPaths.push(fullPath); // only the relative path
+        uploadedPaths.push(fullPath);
     }
 
     return uploadedPaths;
 };
 
-export const addSupabaseUrl = (path, bucket) => {
+export const addSupabaseUrl = (path: string, bucket: string): string => {
     return `${SUPABASE_STORAGE_URL}/${bucket}/${path}`;
 };
 
-export const deleteFromSupabase = async (filePath, bucketName) => {
+export const deleteFromSupabase = async (
+    filePath: string,
+    bucketName: string
+): Promise<void> => {
     const { error } = await supabase.storage.from(bucketName).remove([filePath]);
 
     if (error) {

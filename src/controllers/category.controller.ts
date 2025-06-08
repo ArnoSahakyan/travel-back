@@ -1,9 +1,15 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { Category } from '../db/models';
-import {AuthenticatedRequest} from "../types";
+import { AuthenticatedRequest, TypedRequest } from '../types';
 
-// Create a new Category
-export const createCategory = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+// --- Types ---
+type CategoryParams = { id: number };
+type CreateOrUpdateCategoryBody = { name: string };
+
+export const createCategory = async (
+    req: AuthenticatedRequest<{}, any, CreateOrUpdateCategoryBody>,
+    res: Response
+): Promise<void> => {
     const { name } = req.body;
 
     try {
@@ -15,8 +21,10 @@ export const createCategory = async (req: AuthenticatedRequest, res: Response): 
     }
 };
 
-// Get all Categories
-export const getAllCategories = async (_req: Request, res: Response): Promise<void> => {
+export const getAllCategories = async (
+    _req: TypedRequest,
+    res: Response
+): Promise<void> => {
     try {
         const categories = await Category.findAll();
         res.json(categories);
@@ -26,8 +34,10 @@ export const getAllCategories = async (_req: Request, res: Response): Promise<vo
     }
 };
 
-// Get a Category by ID
-export const getCategoryById = async (req: Request, res: Response): Promise<void> => {
+export const getCategoryById = async (
+    req: TypedRequest<CategoryParams>,
+    res: Response
+): Promise<void> => {
     const { id } = req.params;
 
     try {
@@ -45,8 +55,10 @@ export const getCategoryById = async (req: Request, res: Response): Promise<void
     }
 };
 
-// Update a Category by ID
-export const updateCategory = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const updateCategory = async (
+    req: AuthenticatedRequest<CategoryParams, any, CreateOrUpdateCategoryBody>,
+    res: Response
+): Promise<void> => {
     const { id } = req.params;
     const { name } = req.body;
 
@@ -66,8 +78,10 @@ export const updateCategory = async (req: AuthenticatedRequest, res: Response): 
     }
 };
 
-// Delete a Category by ID
-export const deleteCategory = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const deleteCategory = async (
+    req: AuthenticatedRequest<CategoryParams>,
+    res: Response
+): Promise<void> => {
     const { id } = req.params;
 
     try {

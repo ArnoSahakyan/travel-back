@@ -1,0 +1,1 @@
+export const NEWSLETTER_EXPIRATION_TIME: number = 60 * 60 * 1000;

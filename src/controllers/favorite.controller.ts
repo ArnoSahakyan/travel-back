@@ -1,27 +1,33 @@
 import { Response } from 'express';
-import {Favorite, Tour, TourImage} from '../db/models';
-import {TOURS_BUCKET} from "../constants";
-import {addSupabaseUrl} from "../utils";
-import {AuthenticatedRequest} from "../types";
+import { Favorite, Tour, TourImage } from '../db/models';
+import { TOURS_BUCKET } from '../constants';
+import { addSupabaseUrl } from '../utils';
+import {AuthenticatedRequest, IPaginationQuery} from '../types';
 
-export const addToFavorites = async (req: AuthenticatedRequest, res: Response) => {
+// --- Types ---
+type TourIdParams = { tour_id: number };
+
+// --- Add a tour to user's favorites ---
+export const addToFavorites = async (
+    req: AuthenticatedRequest<{}, any, TourIdParams>,
+    res: Response
+): Promise<void> => {
     try {
         const user_id = req.user_id;
+        const { tour_id } = req.body;
 
         if (!user_id) {
             res.status(401).json({ message: 'Unauthorized: Missing user ID' });
             return;
         }
 
-        const { tour_id } = req.body;
-
         if (!tour_id) {
             res.status(400).json({ message: 'Tour ID is required' });
             return;
         }
 
-        // Prevent duplicates
         const existing = await Favorite.findOne({ where: { user_id, tour_id } });
+
         if (existing) {
             res.status(409).json({ message: 'Tour already in favorites' });
             return;
@@ -35,13 +41,17 @@ export const addToFavorites = async (req: AuthenticatedRequest, res: Response) =
     }
 };
 
-export const removeFromFavorites = async (req: AuthenticatedRequest, res: Response) => {
+// --- Remove a tour from user's favorites ---
+export const removeFromFavorites = async (
+    req: AuthenticatedRequest<TourIdParams>,
+    res: Response
+): Promise<void> => {
     try {
         const user_id = req.user_id;
         const { tour_id } = req.params;
 
         const deleted = await Favorite.destroy({
-            where: { user_id, tour_id }
+            where: { user_id, tour_id },
         });
 
         if (deleted === 0) {
@@ -56,12 +66,15 @@ export const removeFromFavorites = async (req: AuthenticatedRequest, res: Respon
     }
 };
 
-export const getUserFavorites = async (req: AuthenticatedRequest, res: Response) => {
+// --- Get user's paginated favorites ---
+export const getUserFavorites = async (
+    req: AuthenticatedRequest<{},{},{},IPaginationQuery>,
+    res: Response
+): Promise<void> => {
     try {
         const user_id = req.user_id;
-
-        const page = Number(req.query.page || '1');
-        const limit = Number(req.query.limit || '10');
+        const page = req.query.page || 1;
+        const limit = req.query.limit || 10;
         const offset = (page - 1) * limit;
 
         const { count, rows } = await Favorite.findAndCountAll({
@@ -78,11 +91,11 @@ export const getUserFavorites = async (req: AuthenticatedRequest, res: Response)
                             attributes: ['image_url'],
                         },
                     ],
-                }
+                },
             ],
             order: [['created_at', 'DESC']],
             limit,
-            offset
+            offset,
         });
 
         const favorites = rows.map((favoriteItem) => {
@@ -103,9 +116,9 @@ export const getUserFavorites = async (req: AuthenticatedRequest, res: Response)
                     end_date: tour?.end_date,
                     available_spots: tour?.available_spots,
                     image: tour?.TourImages?.[0]?.image_url
-                        ? addSupabaseUrl(tour?.TourImages[0].image_url, TOURS_BUCKET)
-                        : null
-                }
+                        ? addSupabaseUrl(tour.TourImages[0].image_url, TOURS_BUCKET)
+                        : null,
+                },
             };
         });
 
@@ -121,22 +134,20 @@ export const getUserFavorites = async (req: AuthenticatedRequest, res: Response)
     }
 };
 
-export const checkFavorite = async (req: AuthenticatedRequest, res: Response) => {
+// --- Check if a specific tour is in user's favorites ---
+export const checkFavorite = async (
+    req: AuthenticatedRequest<TourIdParams>,
+    res: Response
+): Promise<void> => {
     try {
         const user_id = req.user_id;
         const { tour_id } = req.params;
 
         const favoriteItem = await Favorite.findOne({
-            where: { user_id: user_id, tour_id: tour_id }
+            where: { user_id, tour_id },
         });
 
-        if (favoriteItem) {
-            res.status(200).json({ inFavorites: true });
-            return;
-        }
-
-        res.status(200).json({ inFavorites: false });
-        return;
+        res.status(200).json({ inFavorites: !!favoriteItem });
     } catch (error) {
         console.error('Error checking favorites:', error);
         res.status(500).json({ message: 'Server error' });

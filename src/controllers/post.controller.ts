@@ -1,12 +1,33 @@
-import { Request, Response } from 'express';
-import { addSupabaseUrl, deleteFromSupabase, uploadAndProcessImages, generateUniqueSlug } from '../utils';
+import { Response } from 'express';
+import {
+    addSupabaseUrl,
+    deleteFromSupabase,
+    uploadAndProcessImages,
+    generateUniqueSlug,
+} from '../utils';
 import { BLOGS_BUCKET } from '../constants';
-import {Post} from "../db/models";
+import { Post } from '../db/models';
+import {AuthenticatedRequest, IPaginationQuery, TypedRequest} from '../types';
 
-export const getAllPosts = async (req: Request<any, {test: string}>, res: Response): Promise<void> => {
+// --- Types for request bodies, params and queries ---
+type PostParams = { id: string };
+type SlugParams = { slug: string };
+type PostBody = {
+    title: string;
+    slug?: string;
+    excerpt: string;
+    content: string;
+    is_published: boolean;
+};
+
+// --- GET /posts?page=&limit= ---
+export const getAllPosts = async (
+    req: TypedRequest<{}, {}, {}, IPaginationQuery>,
+    res: Response
+): Promise<void> => {
     try {
-        const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || 10;
+        const page = req.query.page ?? 1;
+        const limit = req.query.limit ?? 10;
         const offset = (page - 1) * limit;
 
         const { count, rows } = await Post.findAndCountAll({
@@ -14,14 +35,14 @@ export const getAllPosts = async (req: Request<any, {test: string}>, res: Respon
             offset,
             where: { is_published: true },
             order: [['created_at', 'DESC']],
-            attributes: { exclude: ['content'] }
+            attributes: { exclude: ['content'] },
         });
 
-        const posts = rows.map(post => {
+        const posts = rows.map((post) => {
             const raw = post.get({ plain: true });
             return {
                 ...raw,
-                image: raw.image ? addSupabaseUrl(raw.image, BLOGS_BUCKET) : null
+                image: raw.image ? addSupabaseUrl(raw.image, BLOGS_BUCKET) : null,
             };
         });
 
@@ -29,18 +50,22 @@ export const getAllPosts = async (req: Request<any, {test: string}>, res: Respon
             total: count,
             currentPage: page,
             totalPages: Math.ceil(count / limit),
-            posts
+            posts,
         });
     } catch (error) {
-        console.error("Error fetching blog posts:", error);
+        console.error('Error fetching blog posts:', error);
         res.status(500).json({ error: 'Failed to fetch blog posts' });
     }
 };
 
-export const getPostBySlug = async (req: Request, res: Response): Promise<void> => {
+// --- GET /posts/:slug ---
+export const getPostBySlug = async (
+    req: TypedRequest<SlugParams>,
+    res: Response
+): Promise<void> => {
     try {
         const post = await Post.findOne({
-            where: { slug: req.params.slug, is_published: true }
+            where: { slug: req.params.slug, is_published: true },
         });
 
         if (!post) {
@@ -52,32 +77,28 @@ export const getPostBySlug = async (req: Request, res: Response): Promise<void> 
 
         res.json({
             ...raw,
-            image: raw.image ? addSupabaseUrl(raw.image, BLOGS_BUCKET) : null
+            image: raw.image ? addSupabaseUrl(raw.image, BLOGS_BUCKET) : null,
         });
     } catch (error) {
-        console.error("Error fetching blog post:", error);
+        console.error('Error fetching blog post:', error);
         res.status(500).json({ error: 'Failed to fetch blog post' });
     }
 };
 
-export const createPost = async (req: Request, res: Response): Promise<void> => {
-    const {
-        title,
-        slug,
-        excerpt,
-        content,
-        is_published
-    } = req.body;
-
-    const file = req.files as Express.Multer.File[] | undefined;
+// --- POST /posts ---
+export const createPost = async (
+    req: AuthenticatedRequest<{}, {}, PostBody>,
+    res: Response
+): Promise<void> => {
+    const { title, slug, excerpt, content, is_published } = req.body;
+    const files = req.files as Express.Multer.File[] | undefined;
 
     try {
         let coverImagePath: string | undefined;
+        const finalSlug = slug || (await generateUniqueSlug(title));
 
-        const finalSlug = slug || await generateUniqueSlug(title);
-
-        if (file && file.length > 0) {
-            const uploaded = await uploadAndProcessImages(file, BLOGS_BUCKET, finalSlug);
+        if (files && files.length > 0) {
+            const uploaded = await uploadAndProcessImages(files, BLOGS_BUCKET, finalSlug);
             coverImagePath = uploaded[0];
         }
 
@@ -87,7 +108,7 @@ export const createPost = async (req: Request, res: Response): Promise<void> => 
             excerpt,
             content,
             image: coverImagePath,
-            is_published
+            is_published,
         });
 
         res.status(201).json(newPost);
@@ -97,18 +118,15 @@ export const createPost = async (req: Request, res: Response): Promise<void> => 
     }
 };
 
-export const updatePost = async (req: Request, res: Response): Promise<void> => {
+// --- PUT /posts/:id ---
+export const updatePost = async (
+    req: AuthenticatedRequest<PostParams, {}, Partial<PostBody>>,
+    res: Response
+): Promise<void> => {
     try {
         const { id } = req.params;
-        const {
-            title,
-            slug,
-            excerpt,
-            content,
-            is_published
-        } = req.body;
-
-        const file = req.files as Express.Multer.File[] | undefined;
+        const { title, slug, excerpt, content, is_published } = req.body;
+        const files = req.files as Express.Multer.File[] | undefined;
 
         const post = await Post.findByPk(id);
         if (!post) {
@@ -118,11 +136,12 @@ export const updatePost = async (req: Request, res: Response): Promise<void> => 
 
         let coverImagePath = post.image;
 
-        if (file && file.length > 0) {
+        if (files && files.length > 0) {
             if (coverImagePath) {
                 await deleteFromSupabase(coverImagePath, BLOGS_BUCKET);
             }
-            const uploaded = await uploadAndProcessImages(file, BLOGS_BUCKET, slug?.replace(/\s+/g, '_') || post.slug);
+            const newSlug = slug?.replace(/\s+/g, '_') || post.slug;
+            const uploaded = await uploadAndProcessImages(files, BLOGS_BUCKET, newSlug);
             coverImagePath = uploaded[0];
         }
 
@@ -133,9 +152,9 @@ export const updatePost = async (req: Request, res: Response): Promise<void> => 
                 excerpt,
                 content,
                 is_published,
-                image: coverImagePath
+                image: coverImagePath,
             },
-            { where: { post_id: Number(id) } }
+            { where: { post_id: id } }
         );
 
         const updatedPost = await Post.findByPk(id);
@@ -146,7 +165,11 @@ export const updatePost = async (req: Request, res: Response): Promise<void> => 
     }
 };
 
-export const deletePost = async (req: Request, res: Response): Promise<void> => {
+// --- DELETE /posts/:id ---
+export const deletePost = async (
+    req: AuthenticatedRequest<PostParams>,
+    res: Response
+): Promise<void> => {
     try {
         const { id } = req.params;
         const post = await Post.findByPk(id);
@@ -160,7 +183,7 @@ export const deletePost = async (req: Request, res: Response): Promise<void> => 
             await deleteFromSupabase(post.image, BLOGS_BUCKET);
         }
 
-        await Post.destroy({ where: { post_id: Number(id) } });
+        await Post.destroy({ where: { post_id: id } });
 
         res.json({ message: 'Post deleted' });
     } catch (error) {

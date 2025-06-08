@@ -13,7 +13,6 @@ const transporter = nodemailer.createTransport({
     },
 });
 
-// Define a type for the email sending parameters
 interface SendEmailParams {
     to: string;
     subject: string;

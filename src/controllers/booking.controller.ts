@@ -1,23 +1,34 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { addSupabaseUrl } from '../utils';
 import { TOURS_BUCKET } from '../constants';
-import {Booking, Tour, User, Role, Destination, Category, TourImage} from '../db/models';
-import {AuthenticatedRequest} from "../types";
+import { Booking, Tour, User, Role, Destination, Category, TourImage } from '../db/models';
+import {AuthenticatedRequest, IPaginationQuery, TypedRequest} from '../types';
+
+export interface CreateBookingBody {
+    tour_id: number;
+    number_of_people: number;
+}
+
+export interface CancelBookingParams {
+    booking_id: number;
+}
+
+export interface GetBookingByIdParams {
+    booking_id: number;
+}
 
 export const createBooking = async (
-    req: AuthenticatedRequest,
+    req: AuthenticatedRequest<{}, {}, CreateBookingBody>,
     res: Response
 ) => {
     try {
         const user_id = req.user_id;
-
         if (!user_id) {
             res.status(401).json({ message: 'Unauthorized: Missing user ID' });
             return;
         }
 
         const { tour_id, number_of_people } = req.body;
-
         if (!tour_id || !number_of_people || number_of_people < 1) {
             res.status(400).json({ message: 'Invalid booking data' });
             return;
@@ -35,13 +46,7 @@ export const createBooking = async (
         }
 
         const total_price = tour.price * number_of_people;
-
-        const booking = await Booking.create({
-            user_id,
-            tour_id,
-            number_of_people,
-            total_price
-        });
+        const booking = await Booking.create({ user_id, tour_id, number_of_people, total_price });
 
         tour.available_spots -= number_of_people;
         await tour.save();
@@ -54,12 +59,12 @@ export const createBooking = async (
 };
 
 export const cancelBooking = async (
-    req: AuthenticatedRequest,
+    req: AuthenticatedRequest<CancelBookingParams>,
     res: Response
 ) => {
     try {
         const user_id = req.user_id;
-        const booking_id = parseInt(req.params.booking_id, 10);
+        const booking_id = req.params.booking_id;
 
         const booking = await Booking.findByPk(booking_id);
         if (!booking) {
@@ -75,7 +80,6 @@ export const cancelBooking = async (
         });
 
         const isAdmin = user?.Role?.name === 'admin';
-
         if (booking.user_id !== user_id && !isAdmin) {
             res.status(403).json({ message: 'Unauthorized' });
             return;
@@ -110,14 +114,14 @@ export const cancelBooking = async (
 };
 
 export const getUsersBookings = async (
-    req: AuthenticatedRequest,
+    req: AuthenticatedRequest<{}, {}, {}, IPaginationQuery>,
     res: Response
 ) => {
     const user_id = req.user_id;
 
     try {
-        const page = parseInt((req.query.page as string) || '1');
-        const limit = parseInt((req.query.limit as string) || '10');
+        const page = req.query.page || 1;
+        const limit = req.query.limit || 10;
         const offset = (page - 1) * limit;
 
         const { count, rows } = await Booking.findAndCountAll({
@@ -166,12 +170,12 @@ export const getUsersBookings = async (
 };
 
 export const getBookingById = async (
-    req: AuthenticatedRequest,
+    req: AuthenticatedRequest<GetBookingByIdParams>,
     res: Response
 ) => {
     try {
         const user_id = req.user_id;
-        const booking_id = parseInt(req.params.booking_id, 10);
+        const booking_id = req.params.booking_id;
 
         const booking = await Booking.findByPk(booking_id, {
             include: [
@@ -181,17 +185,10 @@ export const getBookingById = async (
                 },
                 {
                     model: User,
-                    include: [
-                        {
-                            model: Role,
-                            as: 'Role',
-                            attributes: ['name']
-                        }
-                    ],
+                    include: [{ model: Role, as: 'Role', attributes: ['name'] }],
                     attributes: ['user_id', 'full_name', 'email']
                 }
             ]
-
         });
 
         if (!booking) {
@@ -239,10 +236,13 @@ export const getBookingById = async (
     }
 };
 
-export const getAllBookings = async (req: Request, res: Response) => {
+export const getAllBookings = async (
+    req: TypedRequest<{}, {}, {}, IPaginationQuery>,
+    res: Response
+) => {
     try {
-        const page = parseInt((req.query.page as string) || '1');
-        const limit = parseInt((req.query.limit as string) || '10');
+        const page = req.query.page || 1;
+        const limit = req.query.limit || 10;
         const offset = (page - 1) * limit;
 
         const { count, rows } = await Booking.findAndCountAll({

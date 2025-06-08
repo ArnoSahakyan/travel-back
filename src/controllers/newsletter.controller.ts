@@ -1,11 +1,25 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { NewsletterSubscriber, NewsletterVerification, User } from '../db/models'
-import {sendEmail} from "../utils";
-import {generateNewsletterConfirmationEmail} from "../emails/newsletterConfirmationEmail";
-import {AuthenticatedRequest} from "../types";
+import {
+    NewsletterSubscriber,
+    NewsletterVerification,
+    User,
+} from '../db/models';
+import { sendEmail } from '../utils';
+import { generateNewsletterConfirmationEmail } from '../emails/newsletterConfirmationEmail';
+import { TypedRequest, AuthenticatedRequest } from '../types';
+import {NEWSLETTER_EXPIRATION_TIME} from "../constants";
 
-export const requestNewsletterSubscription = async (req: Request, res: Response) => {
+// ───── Types ─────────────────────────────
+type EmailBody = { email: string };
+type TokenQuery = { token?: string };
+type EmailQuery = { email?: string };
+
+// ───── Request a newsletter subscription ─────
+export const requestNewsletterSubscription = async (
+    req: TypedRequest<{}, {}, EmailBody>,
+    res: Response
+) => {
     const { email } = req.body;
 
     if (!email) {
@@ -14,19 +28,25 @@ export const requestNewsletterSubscription = async (req: Request, res: Response)
     }
 
     try {
-        const existingSubscriber = await NewsletterSubscriber.findOne({ where: { email } });
+        const existingSubscriber = await NewsletterSubscriber.findOne({
+            where: { email },
+        });
+
         if (existingSubscriber) {
             res.status(400).json({ message: 'This email is already subscribed.' });
             return;
         }
 
-        const existingVerification = await NewsletterVerification.findOne({ where: { email } });
+        const existingVerification = await NewsletterVerification.findOne({
+            where: { email },
+        });
+
         if (existingVerification) {
             await existingVerification.destroy();
         }
 
         const token = uuidv4();
-        const expiresAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hour from now
+        const expiresAt = new Date(Date.now() + NEWSLETTER_EXPIRATION_TIME);
 
         await NewsletterVerification.create({
             email,
@@ -47,16 +67,22 @@ export const requestNewsletterSubscription = async (req: Request, res: Response)
     }
 };
 
-export const verifyNewsletterSubscription = async (req: Request, res: Response) => {
+// ───── Verify newsletter subscription ─────
+export const verifyNewsletterSubscription = async (
+    req: TypedRequest<{}, {}, {}, TokenQuery>,
+    res: Response
+) => {
     const { token } = req.query;
 
-    if (!token || typeof token !== 'string') {
+    if (!token) {
         res.status(400).json({ message: 'Token is required.' });
         return;
     }
 
     try {
-        const verification = await NewsletterVerification.findOne({ where: { token } });
+        const verification = await NewsletterVerification.findOne({
+            where: { token },
+        });
 
         if (!verification) {
             res.status(404).json({ message: 'Invalid or expired token.' });
@@ -79,11 +105,14 @@ export const verifyNewsletterSubscription = async (req: Request, res: Response) 
     }
 };
 
-export const unsubscribeNewsletter = async (req: AuthenticatedRequest, res: Response) => {
+// ───── Unsubscribe from newsletter ─────
+export const unsubscribeNewsletter = async (
+    req: AuthenticatedRequest<{}, {}, {}, EmailQuery>,
+    res: Response
+) => {
     try {
-        let email;
+        let email: string | undefined;
 
-        // 1. If a user is logged in
         if (req.user_id) {
             const user = await User.findByPk(req.user_id);
             if (!user) {
@@ -93,7 +122,6 @@ export const unsubscribeNewsletter = async (req: AuthenticatedRequest, res: Resp
             email = user.email;
         }
 
-        // 2. If email is passed as a query parameter
         if (!email && typeof req.query.email === 'string') {
             email = req.query.email;
         }
@@ -103,8 +131,9 @@ export const unsubscribeNewsletter = async (req: AuthenticatedRequest, res: Resp
             return;
         }
 
-        // 3. Find and delete subscriber
-        const subscriber = await NewsletterSubscriber.findOne({ where: { email } });
+        const subscriber = await NewsletterSubscriber.findOne({
+            where: { email },
+        });
 
         if (!subscriber) {
             res.status(404).json({ message: 'Subscriber not found.' });
@@ -119,7 +148,11 @@ export const unsubscribeNewsletter = async (req: AuthenticatedRequest, res: Resp
     }
 };
 
-export const checkSubscriptionStatus = async (req: AuthenticatedRequest, res: Response) => {
+// ───── Check if user is subscribed ─────
+export const checkSubscriptionStatus = async (
+    req: AuthenticatedRequest,
+    res: Response
+) => {
     try {
         const user_id = req.user_id;
 
@@ -146,7 +179,8 @@ export const checkSubscriptionStatus = async (req: AuthenticatedRequest, res: Re
     }
 };
 
-export const getAllSubscribers = async (_req: Request, res: Response) => {
+// ───── Admin: Get all subscribers ─────
+export const getAllSubscribers = async (_req: TypedRequest, res: Response) => {
     try {
         const subscribers = await NewsletterSubscriber.findAll();
         res.json(subscribers);

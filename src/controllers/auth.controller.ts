@@ -1,17 +1,34 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { User, Role } from '../db/models';
-import {generateRefreshToken, generateToken} from "../utils";
-import {AuthenticatedRequest} from "../types";
+import { generateRefreshToken, generateToken } from '../utils';
+import {AuthenticatedRequest, TypedRequest} from '../types';
+
+interface SignUpBody {
+    full_name: string;
+    email: string;
+    password: string;
+    phone_number?: string;
+}
+
+interface SignInBody {
+    email: string;
+    password: string;
+}
+
+interface RefreshTokenBody {
+    refreshToken: string;
+}
 
 interface JwtPayload {
     user_id: number;
     role?: string;
 }
 
-export const signUp = async (req: Request, res: Response) => {
-    const { full_name, email, password, phone } = req.body;
+// POST /auth/signup
+export const signUp = async (req: TypedRequest<{}, {}, SignUpBody>, res: Response) => {
+    const { full_name, email, password, phone_number } = req.body;
 
     if (!full_name || !email || !password) {
         res.status(400).json({ message: 'Name, email, and password are required.' });
@@ -31,8 +48,8 @@ export const signUp = async (req: Request, res: Response) => {
             full_name,
             email,
             password: hashedPassword,
-            phone_number: phone,
-            role_id: 2,
+            phone_number,
+            role_id: 2, // Default user role
         });
 
         res.status(201).json({ message: 'Registration successful.' });
@@ -42,7 +59,8 @@ export const signUp = async (req: Request, res: Response) => {
     }
 };
 
-export const signIn = async (req: Request, res: Response) => {
+// POST /auth/signin
+export const signIn = async (req: TypedRequest<{}, {}, SignInBody>, res: Response) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -86,7 +104,11 @@ export const signIn = async (req: Request, res: Response) => {
     }
 };
 
-export const refreshToken = async (req: Request, res: Response) => {
+// POST /auth/refresh-token
+export const refreshToken = async (
+    req: TypedRequest<{}, {}, RefreshTokenBody>,
+    res: Response
+) => {
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
@@ -95,7 +117,10 @@ export const refreshToken = async (req: Request, res: Response) => {
     }
 
     try {
-        const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET as string) as JwtPayload;
+        const decoded = jwt.verify(
+            refreshToken,
+            process.env.REFRESH_TOKEN_SECRET as string
+        ) as JwtPayload;
 
         const user = await User.findByPk(decoded.user_id, {
             include: {
@@ -121,7 +146,11 @@ export const refreshToken = async (req: Request, res: Response) => {
     }
 };
 
-export const userInfo = async (req: AuthenticatedRequest, res: Response) => {
+// GET /auth/user-info
+export const userInfo = async (
+    req: AuthenticatedRequest,
+    res: Response
+) => {
     const user_id = req.user_id;
 
     if (!user_id) {

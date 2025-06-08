@@ -1,11 +1,28 @@
-import { Request, Response } from 'express';
-import {AuthenticatedRequest} from "../types";
-import {Review, User, Tour, sequelize} from '../db/models';
+import { Response } from 'express';
+import {AuthenticatedRequest, IPaginationQuery, TypedRequest} from '../types';
+import { Review, User, Tour, sequelize } from '../db/models';
 
-export const createReview = async (req: AuthenticatedRequest, res: Response) => {
+// --- Types for request bodies, params and queries ---
+type CreateReviewBody = {
+    tour_id: number;
+    rating: number;
+    comment?: string;
+};
+
+type TourIdParam = {
+    tour_id: string;
+};
+
+type ReviewIdParam = {
+    review_id: string;
+};
+
+export const createReview = async (
+    req: AuthenticatedRequest<{}, {}, CreateReviewBody>,
+    res: Response
+): Promise<void> => {
     try {
         const user_id = req.user_id;
-
         if (!user_id) {
             res.status(401).json({ message: 'Unauthorized: Missing user ID' });
             return;
@@ -18,7 +35,6 @@ export const createReview = async (req: AuthenticatedRequest, res: Response) => 
             return;
         }
 
-        // Prevent duplicate reviews by the same user for the same tour
         const existingReview = await Review.findOne({
             where: { user_id, tour_id },
         });
@@ -42,7 +58,10 @@ export const createReview = async (req: AuthenticatedRequest, res: Response) => 
     }
 };
 
-export const getAllReviews = async (req: Request, res: Response) => {
+export const getAllReviews = async (
+    req: TypedRequest<{}, {}, {}, IPaginationQuery>,
+    res: Response
+): Promise<void> => {
     try {
         const page = Number(req.query.page) || 1;
         const limit = Number(req.query.limit) || 4;
@@ -71,9 +90,10 @@ export const getAllReviews = async (req: Request, res: Response) => {
                 full_name: review.User?.full_name,
                 tour_name: review.Tour?.name,
                 User: undefined,
-                Tour: undefined
-            }
-        })
+                Tour: undefined,
+            };
+        });
+
         res.status(200).json({
             total: count,
             page,
@@ -86,10 +106,12 @@ export const getAllReviews = async (req: Request, res: Response) => {
     }
 };
 
-
-export const getReviewsForTour = async (req: Request, res: Response) => {
+export const getReviewsForTour = async (
+    req: TypedRequest<TourIdParam, {}, {}, IPaginationQuery>,
+    res: Response
+): Promise<void> => {
     try {
-        const { tour_id } = req.params;
+        const tour_id = Number(req.params.tour_id);
 
         const page = Number(req.query.page) || 1;
         const limit = Number(req.query.limit) || 4;
@@ -119,9 +141,9 @@ export const getReviewsForTour = async (req: Request, res: Response) => {
                 full_name: review.User?.full_name,
                 tour_name: review.Tour?.name,
                 User: undefined,
-                Tour: undefined
-            }
-        })
+                Tour: undefined,
+            };
+        });
 
         res.status(200).json({
             total: count,
@@ -135,9 +157,12 @@ export const getReviewsForTour = async (req: Request, res: Response) => {
     }
 };
 
-export const deleteReview = async (req: Request, res: Response) => {
+export const deleteReview = async (
+    req: TypedRequest<ReviewIdParam>,
+    res: Response
+): Promise<void> => {
     try {
-        const { review_id } = req.params;
+        const review_id = Number(req.params.review_id);
 
         const deleted = await Review.destroy({ where: { review_id } });
 
@@ -152,4 +177,3 @@ export const deleteReview = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 };
-
