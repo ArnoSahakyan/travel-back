@@ -33,8 +33,9 @@ export const updatePersonalInfo = async (
 
         user.full_name = full_name;
         user.email = email;
-        if(phone_number) {
-            user.phone_number = phone_number;
+
+        if (req.body.hasOwnProperty('phone_number')) {
+            user.phone_number = phone_number ? phone_number : null;
         }
 
         await user.save();

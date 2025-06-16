@@ -15,7 +15,7 @@ export interface UserAttributes {
     full_name: string;
     email: string;
     password: string;
-    phone_number?: string;
+    phone_number?: string | null;
     role_id?: number;
     created_at?: Date;
     updated_at?: Date;
@@ -30,7 +30,7 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
     public full_name!: string;
     public email!: string;
     public password!: string;
-    public phone_number?: string;
+    public phone_number?: string | null;
     public role_id?: number;
 
     public readonly created_at!: Date;

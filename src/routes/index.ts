@@ -9,6 +9,7 @@ import favoriteRoutes from "./favorite.routes";
 import userRoutes from "./user.routes";
 import reviewRoutes from "./review.routes";
 import postRoutes from "./post.routes";
+import contactRoutes from "./contact.routes";
 
 const router = express.Router();
 
@@ -23,5 +24,6 @@ router.use('/review', reviewRoutes);
 router.use('/tours', tourRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/favorite', favoriteRoutes);
+router.use('/contact', contactRoutes);
 
 export default router;
