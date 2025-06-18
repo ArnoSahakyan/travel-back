@@ -8,7 +8,7 @@ pnpm-debug.log*
 .env.*.local
 
 # Sequelize CLI
-config/config.js
+src/db/config/config.cjs
 *.sqlite
 *.sqlite3
 

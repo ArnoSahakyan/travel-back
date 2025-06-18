@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2021",                       // Modern JS target
+    "module": "ESNext",                       // For native ESM support
+    "moduleResolution": "Node",
+    "lib": ["ES2021", "DOM"],
+    "typeRoots": ["src/types"],
+    "strict": true,                           // Enable all strict type-checking options
+    "esModuleInterop": true,                  // For default import compatibility
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,                // Allow importing JSON files
+    "outDir": "./dist",                       // Compiled output directory
+    "rootDir": "./src",                       // Source directory
+    "allowSyntheticDefaultImports": true,
+    "noImplicitAny": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}
