@@ -6,9 +6,9 @@ import {
     User,
 } from '../db/models';
 import { sendEmail } from '../utils';
-import { generateNewsletterConfirmationEmail } from '../emails/newsletterConfirmationEmail';
+import { generateNewsletterConfirmationEmail } from '../emails';
 import { TypedRequest, AuthenticatedRequest } from '../types';
-import {NEWSLETTER_EXPIRATION_TIME} from "../constants";
+import {EXPIRATION_TIME} from "../constants";
 
 // ───── Types ─────────────────────────────
 type EmailBody = { email: string };
@@ -46,7 +46,7 @@ export const requestNewsletterSubscription = async (
         }
 
         const token = uuidv4();
-        const expiresAt = new Date(Date.now() + NEWSLETTER_EXPIRATION_TIME);
+        const expiresAt = new Date(Date.now() + EXPIRATION_TIME);
 
         await NewsletterVerification.create({
             email,

@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import bcrypt from 'bcrypt';
-import { AuthenticatedRequest } from '../types';
+import {AuthenticatedRequest} from '../types';
 import { User } from '../db/models';
 
 // Type for updating personal info

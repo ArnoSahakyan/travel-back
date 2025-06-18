@@ -2,8 +2,11 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { Response } from 'express';
 import { User, Role } from '../db/models';
-import { generateRefreshToken, generateToken } from '../utils';
+import {generateRefreshToken, generateToken, sendEmail} from '../utils';
 import {AuthenticatedRequest, TypedRequest} from '../types';
+import {v4 as uuidv4} from "uuid";
+import {generateResetPasswordEmail} from "../emails";
+import {EXPIRATION_TIME} from "../constants";
 
 interface SignUpBody {
     full_name: string;
@@ -24,6 +27,16 @@ interface RefreshTokenBody {
 interface JwtPayload {
     user_id: number;
     role?: string;
+}
+
+interface EmailBody { email: string }
+
+interface ResetPasswordBody {
+    new_password: string;
+}
+
+interface ResetPasswordQuery {
+    token?: string;
 }
 
 // POST /auth/signup
@@ -184,5 +197,86 @@ export const userInfo = async (
     } catch (err) {
         console.error('User Info Error:', err);
         res.status(500).json({ message: 'Internal server error.' });
+    }
+};
+
+export const requestPasswordReset = async (
+    req: TypedRequest<{}, {}, EmailBody>,
+    res: Response
+) => {
+    const { email } = req.body;
+
+    if (!email) {
+        res.status(400).json({ message: 'Email is required.' });
+        return;
+    }
+
+    try {
+        const user = await User.findOne({ where: { email } });
+
+        if (!user) {
+            res.status(404).json({ message: 'User not found.' });
+            return;
+        }
+
+        const token = uuidv4();
+        const expiresAt = new Date(Date.now() + EXPIRATION_TIME);
+
+        user.reset_password_token = token;
+        user.reset_token_expires = expiresAt;
+        await user.save();
+
+        await sendEmail({
+            to: email,
+            subject: 'Reset Your Password',
+            html: generateResetPasswordEmail({ token }),
+        });
+
+        res.status(200).json({ message: 'Reset email sent.' });
+    } catch (error) {
+        console.error('Password reset request error:', error);
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+};
+
+export const resetPassword = async (
+    req: TypedRequest<{}, {}, ResetPasswordBody, ResetPasswordQuery>,
+    res: Response
+): Promise<void> => {
+    const { token } = req.query;
+    const { new_password } = req.body;
+
+    if (!token) {
+        res.status(400).json({ message: 'Reset token is required.' });
+        return;
+    }
+
+    if (!new_password) {
+        res.status(400).json({ message: 'New password is required.' });
+        return;
+    }
+
+    try {
+        const user = await User.findOne({ where: { reset_password_token: token } });
+
+        if (
+            !user ||
+            !user.reset_token_expires ||
+            new Date() > user.reset_token_expires
+        ) {
+            res.status(400).json({ message: 'Invalid or expired reset token.' });
+            return;
+        }
+
+        user.password = await bcrypt.hash(new_password, 10);
+        user.reset_password_token = null;
+        user.reset_token_expires = null;
+
+        await user.save();
+
+        res.status(200).json({ message: 'Password has been reset successfully.' });
+    } catch (error) {
+        console.error('Error resetting password:', error);
+        res.status(500).json({ message: 'Failed to reset password' });
     }
 };

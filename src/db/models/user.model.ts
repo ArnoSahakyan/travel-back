@@ -17,6 +17,8 @@ export interface UserAttributes {
     password: string;
     phone_number?: string | null;
     role_id?: number;
+    reset_password_token?: string | null;
+    reset_token_expires?: Date | null;
     created_at?: Date;
     updated_at?: Date;
     deletedAt?: Date | null;
@@ -32,6 +34,8 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
     public password!: string;
     public phone_number?: string | null;
     public role_id?: number;
+    public reset_password_token?: string | null;
+    public reset_token_expires?: Date | null;
 
     public readonly created_at!: Date;
     public readonly updated_at!: Date;
@@ -85,6 +89,14 @@ export default function initUserModel(sequelize: Sequelize): void {
             },
             role_id: {
                 type: DataTypes.INTEGER,
+            },
+            reset_password_token: {
+                type: DataTypes.STRING,
+                allowNull: true,
+            },
+            reset_token_expires: {
+                type: DataTypes.DATE,
+                allowNull: true,
             },
         },
         {

@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { sendEmail } from '../utils';
 import { TypedRequest } from '../types';
-import {generateContactMessageEmail} from "../emails/contactMessageEmail";
+import {generateContactMessageEmail} from "../emails";
 
 interface ContactFormBody {
     full_name: string;
