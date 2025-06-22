@@ -5,8 +5,8 @@
   "main": "src/index.ts",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc --noEmitOnError false",
-    "start": "node dist/index.js"
+    "build": "tsc",
+    "start": "tsx dist/index.js"
   },
   "sequelize": {
     "config": "config/config.ts",
