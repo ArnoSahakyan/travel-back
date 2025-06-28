@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Sequelize } from 'sequelize';
+import {Op, Sequelize, WhereOptions} from 'sequelize';
 import { addSupabaseUrl, deleteFromSupabase, uploadAndProcessImages } from '../utils';
 import { DESTINATIONS_BUCKET } from '../constants';
 import { Destination } from '../db/models';
@@ -8,6 +8,10 @@ import {AuthenticatedRequest, IPaginationQuery, TypedRequest} from '../types';
 interface DestinationCreateBody {
     name: string;
     description?: string;
+}
+
+interface GetFilteredTDestinationsQuery extends IPaginationQuery {
+    search?: string;
 }
 
 interface DestinationUpdateBody {
@@ -90,15 +94,30 @@ export const updateDestination = async (
 
 // Get All Destinations
 export const getAllDestinations = async (
-    req: TypedRequest<{}, {}, {}, IPaginationQuery>,
+    req: TypedRequest<{}, {}, {}, GetFilteredTDestinationsQuery>,
     res: Response
 ) => {
     try {
-        const page = req.query.page || 1;
-        const limit = req.query.limit || 10;
+        const { page = 1, limit = 10, search } = req.query;
         const offset = (page - 1) * limit;
 
+        const baseCondition: WhereOptions = {};
+
+        const searchCondition: WhereOptions | undefined = search
+            ? {
+                [Op.or]: [
+                    { name: { [Op.iLike]: `%${search}%` } },
+                    { description: { [Op.iLike]: `%${search}%` } },
+                ],
+            }
+            : undefined;
+
+        const whereCondition: WhereOptions = searchCondition
+            ? { [Op.and]: [baseCondition, searchCondition] }
+            : baseCondition;
+
         const { count, rows } = await Destination.findAndCountAll({
+            where: whereCondition,
             limit,
             offset,
             attributes: {

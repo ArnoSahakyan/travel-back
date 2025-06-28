@@ -19,7 +19,8 @@ export interface TourParams {
 
 export interface GetFilteredToursQuery extends IPaginationQuery {
     category_id?: number;
-    destination_id?: string;
+    destination_id?: number;
+    search?: string;
 }
 
 export interface GetTourByIdParams {

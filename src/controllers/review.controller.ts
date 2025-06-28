@@ -10,11 +10,11 @@ type CreateReviewBody = {
 };
 
 type TourIdParam = {
-    tour_id: string;
+    tour_id: number;
 };
 
 type ReviewIdParam = {
-    review_id: string;
+    review_id: number;
 };
 
 export const createReview = async (
@@ -63,8 +63,8 @@ export const getAllReviews = async (
     res: Response
 ): Promise<void> => {
     try {
-        const page = Number(req.query.page) || 1;
-        const limit = Number(req.query.limit) || 4;
+        const page = req.query.page || 1;
+        const limit = req.query.limit || 4;
         const offset = (page - 1) * limit;
 
         const { count, rows } = await Review.findAndCountAll({
@@ -111,10 +111,10 @@ export const getReviewsForTour = async (
     res: Response
 ): Promise<void> => {
     try {
-        const tour_id = Number(req.params.tour_id);
+        const tour_id = req.params.tour_id;
 
-        const page = Number(req.query.page) || 1;
-        const limit = Number(req.query.limit) || 4;
+        const page = req.query.page || 1;
+        const limit = req.query.limit || 4;
         const offset = (page - 1) * limit;
 
         const { count, rows } = await Review.findAndCountAll({
@@ -162,7 +162,7 @@ export const deleteReview = async (
     res: Response
 ): Promise<void> => {
     try {
-        const review_id = Number(req.params.review_id);
+        const review_id = req.params.review_id;
 
         const deleted = await Review.destroy({ where: { review_id } });
 
