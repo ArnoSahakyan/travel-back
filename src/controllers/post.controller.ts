@@ -8,32 +8,55 @@ import {
 import { BLOGS_BUCKET } from '../constants';
 import { Post } from '../db/models';
 import {AuthenticatedRequest, IPaginationQuery, TypedRequest} from '../types';
+import {Op, WhereOptions} from "sequelize";
 
 // --- Types for request bodies, params and queries ---
-type PostParams = { id: string };
-type SlugParams = { slug: string };
-type PostBody = {
+interface PostParams { id: string }
+interface SlugParams { slug: string }
+interface PostBody {
     title: string;
     slug?: string;
     excerpt: string;
     content: string;
     is_published: boolean;
-};
+}
+
+interface GetFilteredTPostsQuery extends IPaginationQuery {
+    search?: string;
+}
 
 // --- GET /posts?page=&limit= ---
 export const getAllPosts = async (
-    req: TypedRequest<{}, {}, {}, IPaginationQuery>,
+    req: TypedRequest<{}, {}, {}, GetFilteredTPostsQuery>,
     res: Response
 ): Promise<void> => {
     try {
-        const page = req.query.page ?? 1;
-        const limit = req.query.limit ?? 10;
+        const { page = 1, limit = 10, search } = req.query;
         const offset = (page - 1) * limit;
+
+        const baseCondition: WhereOptions = {
+            is_published: true,
+        };
+
+        const searchCondition: WhereOptions | undefined = search
+            ? {
+                [Op.or]: [
+                    { title: { [Op.iLike]: `%${search}%` } },
+                    { excerpt: { [Op.iLike]: `%${search}%` } },
+                ],
+            }
+            : undefined;
+
+        const whereCondition: WhereOptions = searchCondition
+            ? {
+                [Op.and]: [baseCondition, searchCondition],
+            }
+            : baseCondition;
 
         const { count, rows } = await Post.findAndCountAll({
             limit,
             offset,
-            where: { is_published: true },
+            where: whereCondition,
             order: [['created_at', 'DESC']],
             attributes: { exclude: ['content'] },
         });
@@ -57,6 +80,7 @@ export const getAllPosts = async (
         res.status(500).json({ error: 'Failed to fetch blog posts' });
     }
 };
+
 
 // --- GET /posts/:slug ---
 export const getPostBySlug = async (

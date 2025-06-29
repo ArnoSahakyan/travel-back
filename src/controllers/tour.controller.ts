@@ -22,7 +22,7 @@ import {
     GetTourByIdParams,
     GetTourByIdQuery,
 } from '../types';
-import { WhereOptions } from 'sequelize';
+import {Op, WhereOptions} from 'sequelize';
 
 // Create Tour (Admin only)
 export const createTour = async (
@@ -89,20 +89,40 @@ export const getFilteredTours = async (
     req: TypedRequest<{}, {}, {}, GetFilteredToursQuery>,
     res: Response
 ): Promise<void> => {
-    const { category_id, destination_id, page = 1, limit = 10 } = req.query;
+    const { category_id, destination_id, page = 1, limit = 10, search } = req.query;
 
-    const pageNum = Number(page);
-    const limitNum = Number(limit);
-    const offset = (pageNum - 1) * limitNum;
+    const offset = (page - 1) * limit;
 
-    const where: WhereOptions = {};
-    if (category_id) where.category_id = category_id;
-    if (destination_id) where.destination_id = destination_id;
+    // Base condition (e.g. category or destination filters)
+    const baseCondition: WhereOptions = {};
+
+    if (category_id) {
+        baseCondition.category_id = category_id;
+    }
+
+    if (destination_id) {
+        baseCondition.destination_id = destination_id;
+    }
+
+    // Optional search filter
+    const searchCondition: WhereOptions | undefined = search
+        ? {
+            [Op.or]: [
+                { name: { [Op.iLike]: `%${search}%` } },
+                { description: { [Op.iLike]: `%${search}%` } },
+            ],
+        }
+        : undefined;
+
+    // Merge both filters
+    const whereCondition: WhereOptions = searchCondition
+        ? { [Op.and]: [baseCondition, searchCondition] }
+        : baseCondition;
 
     try {
         const { count, rows } = await Tour.findAndCountAll({
-            where,
-            limit: limitNum,
+            where: whereCondition,
+            limit,
             offset,
             include: [
                 {
@@ -116,8 +136,13 @@ export const getFilteredTours = async (
         });
 
         const tours = rows.map((tour) => {
-            const tourJson = tour.toJSON();
+            const tourJson = tour.toJSON() as {
+                TourImages?: { image_url: string }[];
+                [key: string]: unknown;
+            };
+
             const coverImage = tourJson.TourImages?.[0]?.image_url;
+
             return {
                 ...tourJson,
                 image: coverImage ? addSupabaseUrl(coverImage, TOURS_BUCKET) : null,
@@ -127,8 +152,8 @@ export const getFilteredTours = async (
 
         res.json({
             total: count,
-            currentPage: pageNum,
-            totalPages: Math.ceil(count / limitNum),
+            currentPage: page,
+            totalPages: Math.ceil(count / limit),
             tours,
         });
     } catch (error) {
@@ -142,8 +167,8 @@ export const getTourById = async (
     req: TypedRequest<GetTourByIdParams, {}, {}, GetTourByIdQuery>,
     res: Response
 ): Promise<void> => {
-    const id = Number(req.params.id);
-    const user_id = req.query.user_id ? Number(req.query.user_id) : undefined;
+    const id = req.params.id;
+    const user_id = req.query.user_id;
 
     try {
         const tour = await Tour.findByPk(id, {
@@ -247,7 +272,7 @@ export const deleteTour = async (
     req: AuthenticatedRequest<TourParams>,
     res: Response
 ): Promise<void> => {
-    const id = Number(req.params.id);
+    const id = req.params.id;
 
     try {
         const tour = await Tour.findByPk(id, {
