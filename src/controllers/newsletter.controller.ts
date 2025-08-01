@@ -7,7 +7,7 @@ import {
 } from '../db/models';
 import { sendEmail } from '../utils';
 import { generateNewsletterConfirmationEmail } from '../emails';
-import { TypedRequest, AuthenticatedRequest } from '../types';
+import {TypedRequest, AuthenticatedRequest, IPaginationQuery} from '../types';
 import {EXPIRATION_TIME} from "../constants";
 
 // ───── Types ─────────────────────────────
@@ -111,40 +111,39 @@ export const unsubscribeNewsletter = async (
     res: Response
 ) => {
     try {
-        let email: string | undefined;
+        const isAdmin = req.user_role === 'admin';
+        const requestedEmail = typeof req.query.email === 'string' ? req.query.email : undefined;
+
+        if (isAdmin && requestedEmail) {
+            const subscriber = await NewsletterSubscriber.findOne({ where: { email: requestedEmail } });
+
+            if (!subscriber) {
+                return res.status(404).json({ message: 'Subscriber not found.' });
+            }
+
+            await subscriber.destroy();
+            return res.json({ message: `Successfully unsubscribed ${requestedEmail}.` });
+        }
 
         if (req.user_id) {
             const user = await User.findByPk(req.user_id);
             if (!user) {
-                res.status(404).json({ message: 'User not found' });
-                return;
+                return res.status(404).json({ message: 'User not found.' });
             }
-            email = user.email;
+
+            const subscriber = await NewsletterSubscriber.findOne({ where: { email: user.email } });
+            if (!subscriber) {
+                return res.status(404).json({ message: 'Subscriber not found.' });
+            }
+
+            await subscriber.destroy();
+            return res.json({ message: 'Successfully unsubscribed.' });
         }
 
-        if (!email && typeof req.query.email === 'string') {
-            email = req.query.email;
-        }
-
-        if (!email) {
-            res.status(400).json({ message: 'Email is required to unsubscribe.' });
-            return;
-        }
-
-        const subscriber = await NewsletterSubscriber.findOne({
-            where: { email },
-        });
-
-        if (!subscriber) {
-            res.status(404).json({ message: 'Subscriber not found.' });
-            return;
-        }
-
-        await subscriber.destroy();
-        res.json({ message: 'Successfully unsubscribed.' });
+        return res.status(400).json({ message: 'Email is required or you must be authenticated.' });
     } catch (error) {
         console.error('Unsubscribe Newsletter Error:', error);
-        res.status(500).json({ message: 'Internal server error.' });
+        return res.status(500).json({ message: 'Internal server error.' });
     }
 };
 
@@ -180,10 +179,23 @@ export const checkSubscriptionStatus = async (
 };
 
 // ───── Admin: Get all subscribers ─────
-export const getAllSubscribers = async (_req: TypedRequest, res: Response) => {
+export const getAllSubscribers = async (req: TypedRequest<{}, {}, {}, IPaginationQuery>, res: Response) => {
     try {
-        const subscribers = await NewsletterSubscriber.findAll();
-        res.json(subscribers);
+        const { page = 1, limit = 10 } = req.query;
+        const offset = (page - 1) * limit;
+
+        const { count, rows } = await NewsletterSubscriber.findAndCountAll({
+            limit,
+            offset,
+            order: [['subscribed_at', 'DESC']],
+        });
+
+        res.json({
+            total: count,
+            currentPage: page,
+            totalPages: Math.ceil(count / limit),
+            subscribers: rows,
+        });
     } catch (error) {
         console.error('Get All Subscribers Error:', error);
         res.status(500).json({ message: 'Internal server error.' });

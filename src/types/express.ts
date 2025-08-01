@@ -15,4 +15,5 @@ export interface AuthenticatedRequest<
     ReqQuery = ParsedQs
 > extends Request<Params, ResBody, ReqBody, ReqQuery> {
     user_id?: number;
+    user_role?: 'customer' | 'admin';
 }

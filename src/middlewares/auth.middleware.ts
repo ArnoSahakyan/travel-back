@@ -1,13 +1,15 @@
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { RequestHandler, Response, NextFunction } from 'express';
-import { User } from '../db/models';
 import { AuthenticatedRequest } from '../types';
 
 dotenv.config();
 
 interface CustomJwtPayload extends JwtPayload {
     user_id: number;
+    role: 'customer' | 'admin';
+    iat: number;
+    exp: number;
 }
 
 export const verifyToken: RequestHandler = (
@@ -31,6 +33,7 @@ export const verifyToken: RequestHandler = (
         }
 
         req.user_id = (decoded as CustomJwtPayload).user_id;
+        req.user_role = (decoded as CustomJwtPayload).role;
         next();
     });
 };
@@ -41,14 +44,7 @@ export const isAdmin: RequestHandler = async (
     next: NextFunction
 ) => {
     try {
-        const user = await User.findByPk(req.user_id, {
-            include: {
-                association: 'Role',
-                attributes: ['name'],
-            },
-        });
-
-        if (user?.Role?.name === 'admin') {
+        if (req.user_role === 'admin') {
             next();
             return;
         }
