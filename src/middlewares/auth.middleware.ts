@@ -55,7 +55,6 @@ export const isAdmin: RequestHandler = async (
 
         res.status(403).json({ message: 'Admin access required.' });
     } catch (error) {
-        console.error('isAdmin error:', error);
         res.status(500).json({ message: 'Internal server error.' });
     }
 };

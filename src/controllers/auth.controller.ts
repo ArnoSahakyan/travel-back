@@ -154,7 +154,6 @@ export const refreshToken = async (
             token: newAccessToken,
         });
     } catch (err) {
-        console.error('Refresh Token Error:', err);
         res.status(500).json({ message: 'Internal server error.' });
     }
 };
