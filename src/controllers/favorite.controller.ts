@@ -6,6 +6,7 @@ import {AuthenticatedRequest, IPaginationQuery} from '../types';
 
 // --- Types ---
 type TourIdParams = { tour_id: number };
+type UserIdQuery = { user_id: number | undefined };
 
 // --- Add a tour to user's favorites ---
 export const addToFavorites = async (
@@ -136,12 +137,17 @@ export const getUserFavorites = async (
 
 // --- Check if a specific tour is in user's favorites ---
 export const checkFavorite = async (
-    req: AuthenticatedRequest<TourIdParams>,
+    req: AuthenticatedRequest<TourIdParams, {}, {}, UserIdQuery>,
     res: Response
 ): Promise<void> => {
     try {
-        const user_id = req.user_id;
+        const { user_id } = req.query;
         const { tour_id } = req.params;
+
+        if(!user_id) {
+            res.status(200).json({ inFavorites: false });
+            return;
+        }
 
         const favoriteItem = await Favorite.findOne({
             where: { user_id, tour_id },

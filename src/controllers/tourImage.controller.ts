@@ -104,11 +104,20 @@ export const deleteImageForTour = async (
 
     try {
         const image = await TourImage.findOne({
-            where: { tour_id, image_id: image_id },
+            where: { tour_id, image_id },
         });
 
         if (!image) {
             res.status(404).json({ message: 'Image not found.' });
+            return;
+        }
+
+        // 🔎 Count how many images exist for this tour
+        const imageCount = await TourImage.count({ where: { tour_id } });
+        if (imageCount <= 1) {
+            res.status(400).json({
+                message: 'At least one image must remain for this tour.',
+            });
             return;
         }
 
@@ -117,6 +126,7 @@ export const deleteImageForTour = async (
         await deleteFromSupabase(image.image_url, TOURS_BUCKET);
         await image.destroy();
 
+        // If deleted image was cover, assign cover to another
         if (wasCover) {
             const otherImage = await TourImage.findOne({
                 where: { tour_id },

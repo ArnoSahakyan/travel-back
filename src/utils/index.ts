@@ -1,3 +1,4 @@
+export * from './formatDate';
 export * from './generateTokens';
 export * from './generateSlug';
 export * from './imageUpload';

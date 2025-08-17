@@ -9,6 +9,7 @@ import {
 import {
     addSupabaseUrl,
     deleteFromSupabase,
+    formatDate,
     uploadAndProcessImages,
 } from '../utils';
 import { TOURS_BUCKET } from '../constants';
@@ -207,11 +208,13 @@ export const getTourById = async (
             tour_id: plainTour.tour_id,
             name: plainTour.name,
             description: plainTour.description,
-            price: plainTour.price,
-            start_date: plainTour.start_date,
-            end_date: plainTour.end_date,
+            price: Number(plainTour.price),
+            start_date: formatDate(plainTour.start_date),
+            end_date: formatDate(plainTour.end_date),
             available_spots: plainTour.available_spots,
+            category_id: plainTour.Category?.category_id ?? null,
             category_name: plainTour.Category?.name ?? null,
+            destination_id: plainTour.Destination?.destination_id ?? null,
             destination_name: plainTour.Destination?.name ?? null,
             images,
             hasReviewed,

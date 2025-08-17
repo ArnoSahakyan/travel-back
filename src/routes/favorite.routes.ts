@@ -12,7 +12,7 @@ const router = express.Router();
 
 router.get('/', verifyToken, getUserFavorites);
 router.post('/', verifyToken, addToFavorites);
-router.get('/check/:tour_id', verifyToken, asHandler(checkFavorite));
+router.get('/check/:tour_id', asHandler(checkFavorite));
 router.delete('/:tour_id', verifyToken, asHandler(removeFromFavorites));
 
 export default router;
