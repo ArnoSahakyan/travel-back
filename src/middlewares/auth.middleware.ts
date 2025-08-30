@@ -54,3 +54,28 @@ export const isAdmin: RequestHandler = async (
         res.status(500).json({ message: 'Internal server error.' });
     }
 };
+
+export const optionalAuth: RequestHandler = (
+    req: AuthenticatedRequest,
+    _res: Response,
+    next: NextFunction
+) => {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader?.startsWith('Bearer ')) {
+        // no token, just continue
+        return next();
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET as string, (err, decoded) => {
+        if (err || typeof decoded !== 'object' || !('user_id' in decoded)) {
+            // invalid token, treat as guest
+            return next();
+        }
+
+        req.user_id = (decoded as CustomJwtPayload).user_id;
+        req.user_role = (decoded as CustomJwtPayload).role;
+        next();
+    });
+};

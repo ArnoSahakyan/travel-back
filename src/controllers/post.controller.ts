@@ -7,7 +7,7 @@ import {
 } from '../utils';
 import { BLOGS_BUCKET } from '../constants';
 import { Post } from '../db/models';
-import {AuthenticatedRequest, IPaginationQuery, TypedRequest} from '../types';
+import {AuthenticatedRequest, IPaginationQuery} from '../types';
 import {Op, WhereOptions} from "sequelize";
 
 // --- Types for request bodies, params and queries ---
@@ -27,16 +27,19 @@ interface GetFilteredTPostsQuery extends IPaginationQuery {
 
 // --- GET /posts?page=&limit= ---
 export const getAllPosts = async (
-    req: TypedRequest<{}, {}, {}, GetFilteredTPostsQuery>,
+    req: AuthenticatedRequest<{}, {}, {}, GetFilteredTPostsQuery>,
     res: Response
 ): Promise<void> => {
     try {
         const { page = 1, limit = 10, search } = req.query;
         const offset = (page - 1) * limit;
 
-        const baseCondition: WhereOptions = {
-            is_published: true,
-        };
+        const baseCondition: WhereOptions = {};
+
+        if (!req.user_role || req.user_role !== 'admin') {
+            // guests & customers → only published
+            baseCondition.is_published = true;
+        }
 
         const searchCondition: WhereOptions | undefined = search
             ? {
@@ -84,13 +87,17 @@ export const getAllPosts = async (
 
 // --- GET /posts/:slug ---
 export const getPostBySlug = async (
-    req: TypedRequest<SlugParams>,
+    req: AuthenticatedRequest<SlugParams>,
     res: Response
 ): Promise<void> => {
     try {
-        const post = await Post.findOne({
-            where: { slug: req.params.slug, is_published: true },
-        });
+        const whereCondition: WhereOptions = { slug: req.params.slug };
+
+        if (!req.user_role || req.user_role !== 'admin') {
+            whereCondition.is_published = true;
+        }
+
+        const post = await Post.findOne({ where: whereCondition });
 
         if (!post) {
             res.status(404).json({ error: 'Post not found' });
@@ -144,15 +151,15 @@ export const createPost = async (
 
 // --- PUT /posts/:id ---
 export const updatePost = async (
-    req: AuthenticatedRequest<PostParams, {}, Partial<PostBody>>,
+    req: AuthenticatedRequest<SlugParams, {}, Partial<PostBody>>,
     res: Response
 ): Promise<void> => {
     try {
-        const { id } = req.params;
+        const { slug: initialSlug } = req.params;
         const { title, slug, excerpt, content, is_published } = req.body;
         const files = req.files as Express.Multer.File[] | undefined;
 
-        const post = await Post.findByPk(id);
+        const post = await Post.findOne({ where: { slug: initialSlug } });
         if (!post) {
             res.status(404).json({ error: 'Post not found' });
             return;
@@ -178,10 +185,10 @@ export const updatePost = async (
                 is_published,
                 image: coverImagePath,
             },
-            { where: { post_id: id } }
+            { where: { slug: initialSlug } }
         );
 
-        const updatedPost = await Post.findByPk(id);
+        const updatedPost = await Post.findOne({ where: { slug: initialSlug } });
         res.json(updatedPost);
     } catch (error) {
         console.error('Update Blog Post Error:', error);
