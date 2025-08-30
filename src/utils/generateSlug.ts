@@ -12,14 +12,12 @@ const generateSlug = (title: string) => {
 
 export const generateUniqueSlug = async (title: string) => {
     const baseSlug = generateSlug(title);
-    console.log('BASE SLUG', baseSlug)
     let slug = baseSlug;
     let count = 1;
 
     while (true) {
         const existing = await Post.findOne({ where: { slug } });
         if (!existing) {
-            console.log("FINAL SLUG", slug)
             return slug;
         }
         slug = `${baseSlug}-${count}`;
