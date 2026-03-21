@@ -11,10 +11,10 @@ import {asHandler} from "../utils";
 
 const router = express.Router();
 
-router.get('/my', verifyToken, getUsersBookings);
-router.get('/', verifyToken, isAdmin, getAllBookings);
+router.get('/my', verifyToken, asHandler(getUsersBookings));
+router.get('/', verifyToken, isAdmin, asHandler(getAllBookings));
 router.get('/:booking_id', verifyToken, asHandler(getBookingById));
-router.post('/', verifyToken, createBooking);
+router.post('/', verifyToken, asHandler(createBooking));
 router.delete('/:booking_id', verifyToken, asHandler(cancelBooking));
 
 export default router;

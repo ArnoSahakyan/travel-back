@@ -8,17 +8,18 @@ import {
     resetPassword,
 } from '../controllers/auth.controller';
 import {verifyToken} from '../middlewares/auth.middleware';
+import {asHandler} from "../utils";
 
 const router = express.Router();
 
 // Public routes
-router.post('/signup', signUp);
-router.post('/signin', signIn);
-router.post('/refresh', refreshToken);
-router.post('/request-password-reset', requestPasswordReset);
-router.post('/reset-password', resetPassword);
+router.post('/signup', asHandler(signUp));
+router.post('/signin', asHandler(signIn));
+router.post('/refresh', asHandler(refreshToken));
+router.post('/request-password-reset', asHandler(requestPasswordReset));
+router.post('/reset-password', asHandler(resetPassword));
 
 // Protected route
-router.get('/me', verifyToken, userInfo);
+router.get('/me', verifyToken, asHandler(userInfo));
 
 export default router;

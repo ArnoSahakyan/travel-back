@@ -11,9 +11,9 @@ import {asHandler} from "../utils";
 
 const router = express.Router();
 
-router.post('/', verifyToken, isAdmin, createCategory);
-router.get('/', verifyToken, isAdmin, getAllCategories);
-router.get('/:id', getCategoryById);
+router.post('/', verifyToken, isAdmin, asHandler(createCategory));
+router.get('/', verifyToken, isAdmin, asHandler(getAllCategories));
+router.get('/:id', asHandler(getCategoryById));
 router.put('/:id', verifyToken, isAdmin, asHandler(updateCategory));
 router.delete('/:id', verifyToken, isAdmin, asHandler(deleteCategory));
 

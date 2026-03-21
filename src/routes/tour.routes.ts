@@ -19,16 +19,16 @@ import { asHandler } from '../utils';
 const router = express.Router();
 
 // Tour Routes
-router.get('/', getFilteredTours);
+router.get('/', asHandler(getFilteredTours));
 router.get('/:id', asHandler(getTourById));
-router.post('/', verifyToken, isAdmin, upload, createTour);
+router.post('/', verifyToken, isAdmin, upload, asHandler(createTour));
 router.put('/:id', verifyToken, isAdmin, asHandler(updateTour));
 router.delete('/:id', verifyToken, isAdmin, asHandler(deleteTour));
 
 // Tour Image Routes
 router.post('/:tour_id/images', verifyToken, isAdmin, upload, asHandler(addImagesToTour));
 router.get('/:tour_id/images', asHandler(getImagesForTour));
-router.patch('/cover', verifyToken, isAdmin, setCoverImage);
+router.patch('/cover', verifyToken, isAdmin, asHandler(setCoverImage));
 router.delete('/:tour_id/images/:image_id', verifyToken, isAdmin, asHandler(deleteImageForTour));
 
 export default router;
