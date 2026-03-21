@@ -154,3 +154,43 @@ export const deleteReview = async (
 
     res.status(200).json({ message: 'Review deleted successfully' });
 };
+
+export const getUserReviews = async (
+    req: AuthenticatedRequest<{}, {}, {}, IPaginationQuery>,
+    res: Response
+): Promise<void> => {
+    const user_id = req.user_id;
+
+    const page = req.query.page || 1;
+    const limit = req.query.limit || 10;
+    const offset = (page - 1) * limit;
+
+    const { count, rows } = await Review.findAndCountAll({
+        where: { user_id },
+        include: [
+            {
+                model: Tour,
+                attributes: ['tour_id', 'name'],
+            },
+        ],
+        order: [['created_at', 'DESC']],
+        limit,
+        offset,
+    });
+
+    const reviews = rows.map((reviewItem) => {
+        const review = reviewItem.toJSON();
+        return {
+            ...review,
+            tour_name: review.Tour?.name,
+            Tour: undefined,
+        };
+    });
+
+    res.status(200).json({
+        total: count,
+        page,
+        totalPages: Math.ceil(count / limit),
+        reviews,
+    });
+};

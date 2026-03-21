@@ -1,5 +1,5 @@
 import express from 'express';
-import { updatePersonalInfo, changePassword, getAllUsers, getUserById, updateUserRole, deleteUser, updateUserAdmin } from '../controllers/user.controller';
+import { updatePersonalInfo, changePassword, getAllUsers, getUserById, updateUserRole, deleteUser, updateUserAdmin, getUserStats } from '../controllers/user.controller';
 import {isAdmin, verifyToken} from "../middlewares/auth.middleware";
 import {asHandler} from "../utils";
 
@@ -7,6 +7,7 @@ const router = express.Router();
 
 router.put('/info', verifyToken, asHandler(updatePersonalInfo));
 router.put('/password', verifyToken, asHandler(changePassword));
+router.get('/stats', verifyToken, asHandler(getUserStats));
 
 // Admin routes
 router.get('/', verifyToken, isAdmin, asHandler(getAllUsers));

@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import bcrypt from 'bcrypt';
 import { AuthenticatedRequest, IPaginationQuery, TypedRequest } from '../types';
-import { User, Role } from '../db/models';
+import { User, Role, Booking, Review, Favorite, Tour } from '../db/models';
 import { NotFoundError, BadRequestError } from '../utils';
 
 interface UpdatePersonalInfoBody {
@@ -180,4 +180,43 @@ export const deleteUser = async (
     }
 
     res.status(200).json({ message: 'User deleted successfully' });
+};
+
+export const getUserStats = async (
+    req: AuthenticatedRequest,
+    res: Response
+): Promise<void> => {
+    const user_id = req.user_id;
+
+    const [
+        totalBookings,
+        totalReviews,
+        totalFavorites,
+        recentBookings
+    ] = await Promise.all([
+        Booking.count({ where: { user_id } }),
+        Review.count({ where: { user_id } }),
+        Favorite.count({ where: { user_id } }),
+        Booking.findAll({
+            where: { user_id },
+            limit: 3,
+            order: [['created_at', 'DESC']],
+            include: [{ model: Tour, attributes: ['name', 'tour_id'] }]
+        })
+    ]);
+
+    // Simple Member Rank logic
+    let rank = 'Explorer';
+    if (totalBookings >= 6) rank = 'Legend';
+    else if (totalBookings >= 2) rank = 'Voyager';
+
+    res.status(200).json({
+        stats: {
+            totalBookings,
+            totalReviews,
+            totalFavorites,
+            rank
+        },
+        recentBookings
+    });
 };
