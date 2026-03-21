@@ -11,6 +11,7 @@ import reviewRoutes from "./review.routes";
 import searchRoutes from "./search.routes";
 import tourRoutes from './tour.routes';
 import userRoutes from "./user.routes";
+import statsRoutes from "./stats.routes";
 
 const router = express.Router();
 
@@ -27,5 +28,6 @@ router.use('/tours', tourRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/favorite', favoriteRoutes);
 router.use('/contact', contactRoutes);
+router.use('/stats', statsRoutes);
 
 export default router;

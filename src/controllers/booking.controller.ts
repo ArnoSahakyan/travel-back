@@ -236,3 +236,24 @@ export const getAllBookings = async (
         bookings: rows
     });
 };
+
+export const confirmBooking = async (
+    req: AuthenticatedRequest<{ booking_id: number }>,
+    res: Response
+) => {
+    const booking_id = req.params.booking_id;
+
+    const booking = await Booking.findByPk(booking_id);
+    if (!booking) {
+        throw new NotFoundError('Booking not found');
+    }
+
+    if (booking.status !== 'pending') {
+        throw new BadRequestError('Only pending bookings can be confirmed');
+    }
+
+    booking.status = 'confirmed';
+    await booking.save();
+
+    res.status(200).json({ message: 'Booking confirmed successfully', booking });
+};
