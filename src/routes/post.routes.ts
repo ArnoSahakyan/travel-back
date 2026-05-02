@@ -12,10 +12,10 @@ import {asHandler} from "../utils";
 
 const router = express.Router();
 
-router.get('/', optionalAuth, getAllPosts);
+router.get('/', optionalAuth, asHandler(getAllPosts));
 router.get('/:slug', optionalAuth, asHandler(getPostBySlug));
 
-router.post('/', verifyToken, isAdmin, upload, createPost);
+router.post('/', verifyToken, isAdmin, upload, asHandler(createPost));
 router.put('/:slug', verifyToken, isAdmin, upload, asHandler(updatePost));
 router.delete('/:id', verifyToken, isAdmin, asHandler(deletePost));
 

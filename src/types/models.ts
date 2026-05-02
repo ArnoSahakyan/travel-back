@@ -9,7 +9,8 @@ import {
     Role,
     Tour,
     TourImage,
-    User
+    User,
+    Contact
 } from "../db/models";
 
 export interface DbModels {
@@ -25,4 +26,5 @@ export interface DbModels {
     Post: typeof Post;
     NewsletterSubscriber: typeof NewsletterSubscriber;
     NewsletterVerification: typeof NewsletterVerification;
+    Contact: typeof Contact;
 }

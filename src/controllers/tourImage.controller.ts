@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { uploadAndProcessImages, deleteFromSupabase } from '../utils';
+import { uploadAndProcessImages, deleteFromSupabase, BadRequestError, NotFoundError } from '../utils';
 import { TOURS_BUCKET } from '../constants';
 import { Tour, TourImage } from '../db/models';
 import { AuthenticatedRequest, TypedRequest } from '../types';
@@ -23,43 +23,34 @@ export const addImagesToTour = async (
     const files = req.files;
 
     if (isNaN(tour_id)) {
-        res.status(400).json({ message: 'Invalid tour ID.' });
-        return;
+        throw new BadRequestError('Invalid tour ID.');
     }
 
     if (!files || !Array.isArray(files)) {
-        res.status(400).json({ message: 'No files uploaded' });
-        return;
+        throw new BadRequestError('No files uploaded');
     }
 
-    try {
-        const tour = await Tour.findByPk(tour_id);
-        if (!tour) {
-            res.status(404).json({ message: 'Tour not found.' });
-            return;
-        }
-
-        const existingImageCount = await TourImage.count({ where: { tour_id } });
-        if (existingImageCount + files.length > 10) {
-            res.status(400).json({ message: 'A tour can have a maximum of 10 images.' });
-            return;
-        }
-
-        const imagePaths = await uploadAndProcessImages(files, TOURS_BUCKET, tour_id.toString());
-
-        const newImages = await TourImage.bulkCreate(
-            imagePaths.map((path) => ({
-                tour_id,
-                image_url: path,
-                is_cover: false,
-            }))
-        );
-
-        res.status(201).json(newImages);
-    } catch (error) {
-        console.error('Add Image Error:', error);
-        res.status(500).json({ message: 'Internal server error.' });
+    const tour = await Tour.findByPk(tour_id);
+    if (!tour) {
+        throw new NotFoundError('Tour not found.');
     }
+
+    const existingImageCount = await TourImage.count({ where: { tour_id } });
+    if (existingImageCount + files.length > 10) {
+        throw new BadRequestError('A tour can have a maximum of 10 images.');
+    }
+
+    const imagePaths = await uploadAndProcessImages(files, TOURS_BUCKET, tour_id.toString());
+
+    const newImages = await TourImage.bulkCreate(
+        imagePaths.map((path) => ({
+            tour_id,
+            image_url: path,
+            is_cover: false,
+        }))
+    );
+
+    res.status(201).json(newImages);
 };
 
 // Get images (Public)
@@ -69,13 +60,8 @@ export const getImagesForTour = async (
 ): Promise<void> => {
     const { tour_id } = req.params;
 
-    try {
-        const images = await TourImage.findAll({ where: { tour_id } });
-        res.json(images);
-    } catch (error) {
-        console.error('Get Images Error:', error);
-        res.status(500).json({ message: 'Internal server error.' });
-    }
+    const images = await TourImage.findAll({ where: { tour_id } });
+    res.json(images);
 };
 
 // Set cover (Admin)
@@ -85,14 +71,9 @@ export const setCoverImage = async (
 ): Promise<void> => {
     const { tour_id, image_id } = req.body;
 
-    try {
-        await TourImage.update({ is_cover: false }, { where: { tour_id } });
-        await TourImage.update({ is_cover: true }, { where: { image_id } });
-        res.json({ message: 'Cover image updated.' });
-    } catch (err) {
-        console.error('Set Cover Image Error:', err);
-        res.status(500).json({ message: 'Internal server error.' });
-    }
+    await TourImage.update({ is_cover: false }, { where: { tour_id } });
+    await TourImage.update({ is_cover: true }, { where: { image_id } });
+    res.json({ message: 'Cover image updated.' });
 };
 
 // Delete image (Admin)
@@ -102,45 +83,36 @@ export const deleteImageForTour = async (
 ): Promise<void> => {
     const { tour_id, image_id } = req.params;
 
-    try {
-        const image = await TourImage.findOne({
-            where: { tour_id, image_id },
+    const image = await TourImage.findOne({
+        where: { tour_id, image_id },
+    });
+
+    if (!image) {
+        throw new NotFoundError('Image not found.');
+    }
+
+    // 🔎 Count how many images exist for this tour
+    const imageCount = await TourImage.count({ where: { tour_id } });
+    if (imageCount <= 1) {
+        throw new BadRequestError('At least one image must remain for this tour.');
+    }
+
+    const wasCover = image.is_cover;
+
+    await deleteFromSupabase(image.image_url, TOURS_BUCKET);
+    await image.destroy();
+
+    // If deleted image was cover, assign cover to another
+    if (wasCover) {
+        const otherImage = await TourImage.findOne({
+            where: { tour_id },
+            order: [['image_id', 'ASC']],
         });
 
-        if (!image) {
-            res.status(404).json({ message: 'Image not found.' });
-            return;
+        if (otherImage) {
+            await otherImage.update({ is_cover: true });
         }
-
-        // 🔎 Count how many images exist for this tour
-        const imageCount = await TourImage.count({ where: { tour_id } });
-        if (imageCount <= 1) {
-            res.status(400).json({
-                message: 'At least one image must remain for this tour.',
-            });
-            return;
-        }
-
-        const wasCover = image.is_cover;
-
-        await deleteFromSupabase(image.image_url, TOURS_BUCKET);
-        await image.destroy();
-
-        // If deleted image was cover, assign cover to another
-        if (wasCover) {
-            const otherImage = await TourImage.findOne({
-                where: { tour_id },
-                order: [['image_id', 'ASC']],
-            });
-
-            if (otherImage) {
-                await otherImage.update({ is_cover: true });
-            }
-        }
-
-        res.json({ message: 'Image deleted successfully.' });
-    } catch (error) {
-        console.error('Delete Image Error:', error);
-        res.status(500).json({ message: 'Internal server error.' });
     }
+
+    res.json({ message: 'Image deleted successfully.' });
 };

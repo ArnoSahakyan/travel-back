@@ -11,10 +11,10 @@ import {asHandler} from "../utils";
 
 const router = express.Router();
 
-router.post('/subscribe', requestNewsletterSubscription);
-router.get('/verify', verifyNewsletterSubscription);
+router.post('/subscribe', asHandler(requestNewsletterSubscription));
+router.get('/verify', asHandler(verifyNewsletterSubscription));
 router.post('/unsubscribe', verifyToken, asHandler(unsubscribeNewsletter));
-router.get('/is-subscribed', verifyToken, checkSubscriptionStatus);
-router.get('/all', verifyToken, isAdmin, getAllSubscribers);
+router.get('/is-subscribed', verifyToken, asHandler(checkSubscriptionStatus));
+router.get('/all', verifyToken, isAdmin, asHandler(getAllSubscribers));
 
 export default router;

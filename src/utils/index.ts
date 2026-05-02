@@ -5,3 +5,5 @@ export * from './imageUpload';
 export * from './sendEmail';
 export * from './supabase';
 export * from './typedRoute';
+export * from './errors';
+

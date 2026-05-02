@@ -1,10 +1,19 @@
 import express from 'express';
-import { updatePersonalInfo, changePassword } from '../controllers/user.controller';
-import {verifyToken} from "../middlewares/auth.middleware";
+import { updatePersonalInfo, changePassword, getAllUsers, getUserById, updateUserRole, deleteUser, updateUserAdmin, getUserStats } from '../controllers/user.controller';
+import {isAdmin, verifyToken} from "../middlewares/auth.middleware";
+import {asHandler} from "../utils";
 
 const router = express.Router();
 
-router.put('/info', verifyToken, updatePersonalInfo);
-router.put('/password', verifyToken, changePassword);
+router.put('/info', verifyToken, asHandler(updatePersonalInfo));
+router.put('/password', verifyToken, asHandler(changePassword));
+router.get('/stats', verifyToken, asHandler(getUserStats));
+
+// Admin routes
+router.get('/', verifyToken, isAdmin, asHandler(getAllUsers));
+router.get('/:user_id', verifyToken, isAdmin, asHandler(getUserById));
+router.patch('/:user_id/role', verifyToken, isAdmin, asHandler(updateUserRole));
+router.put('/:user_id', verifyToken, isAdmin, asHandler(updateUserAdmin));
+router.delete('/:user_id', verifyToken, isAdmin, asHandler(deleteUser));
 
 export default router;

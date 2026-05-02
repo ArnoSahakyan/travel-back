@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
-import {Op, Sequelize, WhereOptions} from 'sequelize';
-import { addSupabaseUrl, deleteFromSupabase, uploadAndProcessImages } from '../utils';
+import { Op, Sequelize, WhereOptions } from 'sequelize';
+import { addSupabaseUrl, deleteFromSupabase, uploadAndProcessImages, NotFoundError } from '../utils';
 import { DESTINATIONS_BUCKET } from '../constants';
 import { Destination } from '../db/models';
-import {AuthenticatedRequest, IPaginationQuery, TypedRequest} from '../types';
+import { AuthenticatedRequest, IPaginationQuery, TypedRequest } from '../types';
 
 interface DestinationCreateBody {
     name: string;
@@ -31,25 +31,20 @@ export const createDestination = async (
     const { name, description } = req.body;
     const files = req.files as Express.Multer.File[] | undefined;
 
-    try {
-        let imagePath: string | undefined;
+    let imagePath: string | undefined;
 
-        if (files) {
-            const uploaded = await uploadAndProcessImages(files, DESTINATIONS_BUCKET, name.replace(/\s+/g, '_'));
-            imagePath = uploaded[0];
-        }
-
-        const destination = await Destination.create({
-            name,
-            description,
-            image: imagePath,
-        });
-
-        res.status(201).json(destination);
-    } catch (error) {
-        console.error('Create Destination Error:', error);
-        res.status(500).json({ message: 'Internal server error.' });
+    if (files && files.length > 0) {
+        const uploaded = await uploadAndProcessImages(files, DESTINATIONS_BUCKET, name.replace(/\s+/g, '_'));
+        imagePath = uploaded[0];
     }
+
+    const destination = await Destination.create({
+        name,
+        description,
+        image: imagePath,
+    });
+
+    res.status(201).json(destination);
 };
 
 // Update Destination (Admin only)
@@ -61,35 +56,30 @@ export const updateDestination = async (
     const { name, description } = req.body;
     const files = req.files as Express.Multer.File[] | undefined;
 
-    try {
-        const destination = await Destination.findByPk(id);
+    const destination = await Destination.findByPk(id);
 
-        if (!destination) {
-            return res.status(404).json({ message: 'Destination not found.' });
-        }
-
-        let imagePath = destination.image;
-
-        if (files) {
-            if (imagePath) {
-                await deleteFromSupabase(imagePath, DESTINATIONS_BUCKET);
-            }
-
-            const uploaded = await uploadAndProcessImages(files, DESTINATIONS_BUCKET, id);
-            imagePath = uploaded[0];
-        }
-
-        await destination.update({
-            name,
-            description,
-            image: imagePath,
-        });
-
-        res.json(destination);
-    } catch (error) {
-        console.error('Update Destination Error:', error);
-        res.status(500).json({ message: 'Internal server error.' });
+    if (!destination) {
+        throw new NotFoundError('Destination not found.');
     }
+
+    let imagePath = destination.image;
+
+    if (files && files.length > 0) {
+        if (imagePath) {
+            await deleteFromSupabase(imagePath, DESTINATIONS_BUCKET);
+        }
+
+        const uploaded = await uploadAndProcessImages(files, DESTINATIONS_BUCKET, id.toString());
+        imagePath = uploaded[0];
+    }
+
+    await destination.update({
+        name,
+        description,
+        image: imagePath,
+    });
+
+    res.json(destination);
 };
 
 // Get All Destinations
@@ -97,70 +87,65 @@ export const getAllDestinations = async (
     req: TypedRequest<{}, {}, {}, GetFilteredTDestinationsQuery>,
     res: Response
 ) => {
-    try {
-        const { page = 1, limit = 10, search } = req.query;
-        const offset = (page - 1) * limit;
+    const { page = 1, limit = 10, search } = req.query;
+    const offset = (page - 1) * limit;
 
-        const baseCondition: WhereOptions = {};
+    const baseCondition: WhereOptions = {};
 
-        const searchCondition: WhereOptions | undefined = search
-            ? {
-                [Op.or]: [
-                    { name: { [Op.iLike]: `%${search}%` } },
-                    { description: { [Op.iLike]: `%${search}%` } },
-                ],
-            }
-            : undefined;
+    const searchCondition: WhereOptions | undefined = search
+        ? {
+            [Op.or]: [
+                { name: { [Op.iLike]: `%${search}%` } },
+                { description: { [Op.iLike]: `%${search}%` } },
+            ],
+        }
+        : undefined;
 
-        const whereCondition: WhereOptions = searchCondition
-            ? { [Op.and]: [baseCondition, searchCondition] }
-            : baseCondition;
+    const whereCondition: WhereOptions = searchCondition
+        ? { [Op.and]: [baseCondition, searchCondition] }
+        : baseCondition;
 
-        const { count, rows } = await Destination.findAndCountAll({
-            where: whereCondition,
-            limit,
-            offset,
-            attributes: {
-                include: [
-                    [
-                        Sequelize.literal(`(
+    const { count, rows } = await Destination.findAndCountAll({
+        where: whereCondition,
+        limit,
+        offset,
+        attributes: {
+            include: [
+                [
+                    Sequelize.literal(`(
               SELECT COUNT(*)
               FROM "tours" AS "Tour"
               WHERE "Tour"."destination_id" = "Destination"."destination_id"
             )`),
-                        'tourCount',
-                    ],
-                    [
-                        Sequelize.literal(`(
+                    'tourCount',
+                ],
+                [
+                    Sequelize.literal(`(
               SELECT MIN("Tour"."price")
               FROM "tours" AS "Tour"
               WHERE "Tour"."destination_id" = "Destination"."destination_id"
             )`),
-                        'startingPrice',
-                    ],
+                    'startingPrice',
                 ],
-            },
-            order: [['destination_id', 'ASC']],
-        });
+            ],
+        },
+        order: [['destination_id', 'ASC']],
+    });
 
-        const destinations = rows.map(destination => {
-            const raw = destination.get({ plain: true }) as any;
-            return {
-                ...raw,
-                image: addSupabaseUrl(raw.image ?? '', DESTINATIONS_BUCKET),
-            };
-        });
+    const destinations = rows.map(destination => {
+        const raw = destination.get({ plain: true }) as any;
+        return {
+            ...raw,
+            image: addSupabaseUrl(raw.image ?? '', DESTINATIONS_BUCKET),
+        };
+    });
 
-        res.json({
-            total: count,
-            currentPage: page,
-            totalPages: Math.ceil(count / limit),
-            destinations,
-        });
-    } catch (error) {
-        console.error('Get All Destinations Error:', error);
-        res.status(500).json({ message: 'Internal server error.' });
-    }
+    res.json({
+        total: count,
+        currentPage: page,
+        totalPages: Math.ceil(count / limit),
+        destinations,
+    });
 };
 
 // Get One
@@ -170,23 +155,18 @@ export const getDestinationById = async (
 ) => {
     const { id } = req.params;
 
-    try {
-        const destination = await Destination.findByPk(id);
+    const destination = await Destination.findByPk(id);
 
-        if (!destination) {
-            return res.status(404).json({ message: 'Destination not found.' });
-        }
-
-        const plainDestination = destination.get({ plain: true }) as any;
-
-        res.json({
-            ...plainDestination,
-            image: addSupabaseUrl(plainDestination.image ?? '', DESTINATIONS_BUCKET),
-        });
-    } catch (error) {
-        console.error('Get Destination Error:', error);
-        res.status(500).json({ message: 'Internal server error.' });
+    if (!destination) {
+        throw new NotFoundError('Destination not found.');
     }
+
+    const plainDestination = destination.get({ plain: true }) as any;
+
+    res.json({
+        ...plainDestination,
+        image: addSupabaseUrl(plainDestination.image ?? '', DESTINATIONS_BUCKET),
+    });
 };
 
 // Delete
@@ -196,22 +176,17 @@ export const deleteDestination = async (
 ) => {
     const { id } = req.params;
 
-    try {
-        const destination = await Destination.findByPk(id);
+    const destination = await Destination.findByPk(id);
 
-        if (!destination) {
-            return res.status(404).json({ message: 'Destination not found.' });
-        }
-
-        if (destination.image) {
-            await deleteFromSupabase(destination.image, DESTINATIONS_BUCKET);
-        }
-
-        await destination.destroy();
-
-        res.json({ message: 'Destination deleted successfully.' });
-    } catch (error) {
-        console.error('Delete Destination Error:', error);
-        res.status(500).json({ message: 'Internal server error.' });
+    if (!destination) {
+        throw new NotFoundError('Destination not found.');
     }
+
+    if (destination.image) {
+        await deleteFromSupabase(destination.image, DESTINATIONS_BUCKET);
+    }
+
+    await destination.destroy();
+
+    res.json({ message: 'Destination deleted successfully.' });
 };
